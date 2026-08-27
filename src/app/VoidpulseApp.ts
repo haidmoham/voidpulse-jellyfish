@@ -1,70 +1,56 @@
 import * as THREE from "three";
-import {
-  CelestialJellyfish,
-  DEFAULT_JELLYFISH_PARAMS,
-  type CelestialJellyfishParams,
-} from "../visual/CelestialJellyfish";
-import { createControls } from "./controls";
+import type { AureliaScene } from "../vendor/aurelia/AureliaScene.js";
 import { OrbitCameraController } from "./OrbitCameraController";
 
 const MAX_DELTA_SECONDS = 1 / 20;
 const MAX_PIXEL_RATIO = 2;
+const CAMERA_DRIFT = 0.35;
 
 export class VoidpulseApp {
-  private readonly scene = new THREE.Scene();
-  private readonly camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+  private visual!: AureliaScene;
   private readonly grid = new THREE.GridHelper(12, 24, 0x456f9b, 0x18304f);
-  private readonly renderer = new THREE.WebGLRenderer({
-    antialias: true,
-    alpha: false,
-    powerPreference: "high-performance",
-  });
-  private readonly params: CelestialJellyfishParams = {
-    ...DEFAULT_JELLYFISH_PARAMS,
-  };
-  private readonly jellyfish: CelestialJellyfish;
-  private readonly cameraController: OrbitCameraController;
-  private readonly controls;
   private readonly clock = new THREE.Clock();
   private readonly reducedMotionQuery = window.matchMedia(
     "(prefers-reduced-motion: reduce)",
   );
 
+  private cameraController: OrbitCameraController | null = null;
   private reducedMotion = this.reducedMotionQuery.matches;
+  private animationFrame: number | null = null;
   private loopRunning = false;
   private disposed = false;
 
-  constructor(private readonly root: HTMLElement) {
-    this.scene.background = new THREE.Color(0x020714);
-    this.camera.position.set(0, 0, 5.5);
+  private constructor(private readonly root: HTMLElement) {}
+
+  static async create(root: HTMLElement): Promise<VoidpulseApp> {
+    const app = new VoidpulseApp(root);
+    await app.initialize();
+    return app;
+  }
+
+  async initialize(): Promise<void> {
+    const { AureliaScene } = await import("../vendor/aurelia/AureliaScene.js");
+    this.visual = new AureliaScene();
+    await this.visual.init();
 
     this.grid.rotation.x = Math.PI / 2;
     this.grid.material.transparent = true;
-    this.grid.material.opacity = 0.22;
+    this.grid.material.opacity = 0.16;
     this.grid.material.depthWrite = false;
-    this.scene.add(this.grid);
+    this.visual.scene.add(this.grid);
 
-    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1;
-    this.renderer.domElement.setAttribute("aria-hidden", "true");
-    this.renderer.domElement.className = "experience-canvas";
-    this.root.prepend(this.renderer.domElement);
-
-    this.jellyfish = new CelestialJellyfish(
-      this.scene,
-      this.camera,
-      this.renderer,
-      this.params,
-    );
+    this.root.prepend(this.visual.renderer.domElement);
     this.cameraController = new OrbitCameraController(
-      this.camera,
-      this.renderer.domElement,
+      this.visual.camera,
+      this.visual.renderer.domElement,
     );
-    this.controls = createControls(this.params);
   }
 
   start(): void {
+    if (!this.cameraController) {
+      throw new Error("Voidpulse must finish initializing before it starts.");
+    }
+
     this.resize();
     this.cameraController.connect();
     window.addEventListener("resize", this.resize, { passive: true });
@@ -75,7 +61,6 @@ export class VoidpulseApp {
     );
     window.addEventListener("pagehide", this.handlePageHide);
     window.addEventListener("pageshow", this.handlePageShow);
-
     this.startLoop();
   }
 
@@ -95,50 +80,43 @@ export class VoidpulseApp {
     );
     window.removeEventListener("pagehide", this.handlePageHide);
     window.removeEventListener("pageshow", this.handlePageShow);
-    this.controls.destroy();
-    this.cameraController.dispose();
-    this.jellyfish.dispose();
-    this.scene.remove(this.grid);
+    this.cameraController?.dispose();
+    this.cameraController = null;
+    this.visual.scene.remove(this.grid);
     this.grid.geometry.dispose();
     this.grid.material.dispose();
-    this.renderer.dispose();
-    this.renderer.domElement.remove();
+    this.visual.dispose();
+    this.visual.renderer.domElement.remove();
   }
 
   private readonly resize = (): void => {
     const width = window.innerWidth;
     const height = window.innerHeight;
     const pixelRatio = Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO);
-
-    this.renderer.setPixelRatio(pixelRatio);
-    this.renderer.setSize(width, height, false);
-    this.jellyfish.resize(width, height, pixelRatio);
+    this.visual.resize(width, height, pixelRatio);
   };
 
-  private readonly frame = (): void => {
-    if (this.disposed || document.hidden) return;
+  private readonly frame = async (): Promise<void> => {
+    if (this.disposed || document.hidden || !this.loopRunning) return;
 
     const dt = Math.min(this.clock.getDelta(), MAX_DELTA_SECONDS);
-    this.jellyfish.update(dt);
-    this.cameraController.update(
+    this.cameraController?.update(
       dt,
-      this.reducedMotion ? 0 : this.params.cameraDrift,
+      this.reducedMotion ? 0 : CAMERA_DRIFT,
     );
-    this.jellyfish.render();
+    await this.visual.update(dt, this.clock.getElapsedTime());
+
+    if (this.loopRunning && !this.disposed && !document.hidden) {
+      this.animationFrame = requestAnimationFrame(this.frame);
+    }
   };
 
   private startLoop(): void {
-    if (
-      this.disposed ||
-      this.loopRunning ||
-      document.hidden
-    ) {
-      return;
-    }
+    if (this.disposed || this.loopRunning || document.hidden) return;
 
     this.loopRunning = true;
     this.clock.start();
-    this.renderer.setAnimationLoop(this.frame);
+    this.animationFrame = requestAnimationFrame(this.frame);
   }
 
   private stopLoop(): void {
@@ -146,7 +124,10 @@ export class VoidpulseApp {
 
     this.loopRunning = false;
     this.clock.stop();
-    this.renderer.setAnimationLoop(null);
+    if (this.animationFrame !== null) {
+      cancelAnimationFrame(this.animationFrame);
+      this.animationFrame = null;
+    }
   }
 
   private readonly handleVisibilityChange = (): void => {
@@ -173,7 +154,6 @@ export class VoidpulseApp {
 
   private readonly handlePageShow = (event: PageTransitionEvent): void => {
     if (!event.persisted || this.disposed) return;
-
     this.startLoop();
   };
 }

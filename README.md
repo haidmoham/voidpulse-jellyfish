@@ -3,9 +3,10 @@
 VoidPulse Jellyfish is a real-time Three.js visual built with Vite and
 TypeScript.
 
-The scale hierarchy and layered light take inspiration from
-[Aurelia](https://holtsetio.com/lab/aurelia/). The geometry, shaders, motion,
-and interaction are original to this project.
+The primary jellyfish and blue procedural seascape are adapted from
+[Aurelia](https://github.com/holtsetio/aurelia) by Holtsetio under the MIT
+License. See [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md) for attribution
+and the complete license notice.
 
 ## Setup
 
@@ -38,13 +39,14 @@ The build runs the TypeScript project check and writes the Vite bundle to
 ## Architecture
 
 - `src/main.ts` mounts and starts the application.
-- `src/app/VoidpulseApp.ts` owns the renderer, camera, frame loop, resize
-  handling, comfort settings, and cleanup.
-- `src/app/controls.ts` defines the `lil-gui` controls.
+- `src/app/VoidpulseApp.ts` owns the asynchronous WebGPU visual lifecycle,
+  frame loop, resize handling, comfort settings, and cleanup.
 - `src/app/OrbitCameraController.ts` handles pointer orbit and wheel or pinch
   zoom around the jellyfish.
-- `src/visual/CelestialJellyfish.ts` owns the scene graph, animation, and
-  post-processing.
+- `src/vendor/aurelia/AureliaScene.js` assembles the single vendored Medusa,
+  blue procedural environment, GPU Verlet simulation, and TSL bloom pipeline.
+- `src/vendor/aurelia/` contains the adapted Aurelia source boundary. Its
+  licensing and provenance are recorded in `THIRD_PARTY_NOTICES.md`.
 - `src/style.css` provides the full-viewport canvas and intentionally quiet
-  overlay typography. With reduced motion enabled, the app renders a still
-  frame instead of running the animation loop.
+  overlay typography. With reduced motion enabled, the scene continues its
+  slow animation while automatic camera drift is disabled.
