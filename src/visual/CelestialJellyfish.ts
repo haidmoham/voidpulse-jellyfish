@@ -27,7 +27,6 @@ export class CelestialJellyfish {
   private readonly particles = new Particles();
   private readonly starfield = new Starfield();
   private readonly postProcessing: PostProcessing;
-  private readonly cameraAnchor: THREE.Vector3;
   private elapsed = 0;
   private lastDelta = 1 / 60;
 
@@ -38,8 +37,7 @@ export class CelestialJellyfish {
     parameters: CelestialJellyfishParameterInput = {},
   ) {
     this.params = createMutableParameters(parameters);
-    this.cameraAnchor = camera.position.clone();
-    this.group.add(this.bell.mesh, this.tentacles.group, this.particles.points);
+    this.group.add(this.bell.group, this.tentacles.group, this.particles.points);
     this.scene.add(this.group, this.starfield.points);
     this.postProcessing = new PostProcessing(renderer, scene, camera);
     this.resize();
@@ -54,7 +52,6 @@ export class CelestialJellyfish {
     this.particles.update(dt, this.elapsed, this.params);
     this.starfield.update(this.elapsed);
     this.postProcessing.setBloomStrength(this.params.bloomStrength);
-    this.applyCameraDrift();
   }
 
   render(): void {
@@ -77,22 +74,12 @@ export class CelestialJellyfish {
 
   dispose(): void {
     this.scene.remove(this.group, this.starfield.points);
-    this.camera.position.copy(this.cameraAnchor);
     this.bell.dispose();
     this.tentacles.dispose();
     this.particles.dispose();
     this.starfield.dispose();
     this.postProcessing.dispose();
     this.group.clear();
-  }
-
-  private applyCameraDrift(): void {
-    const drift = THREE.MathUtils.clamp(this.params.cameraDrift, 0, 2) * 0.12;
-    this.camera.position.set(
-      this.cameraAnchor.x + Math.sin(this.elapsed * 0.11) * drift,
-      this.cameraAnchor.y + Math.sin(this.elapsed * 0.17) * drift * 0.45,
-      this.cameraAnchor.z,
-    );
   }
 
   private getWidth(): number {

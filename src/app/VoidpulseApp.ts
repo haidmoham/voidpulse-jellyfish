@@ -5,6 +5,7 @@ import {
   type CelestialJellyfishParams,
 } from "../visual/CelestialJellyfish";
 import { createControls } from "./controls";
+import { OrbitCameraController } from "./OrbitCameraController";
 
 const MAX_DELTA_SECONDS = 1 / 20;
 const MAX_PIXEL_RATIO = 2;
@@ -12,6 +13,7 @@ const MAX_PIXEL_RATIO = 2;
 export class VoidpulseApp {
   private readonly scene = new THREE.Scene();
   private readonly camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+  private readonly grid = new THREE.GridHelper(12, 24, 0x456f9b, 0x18304f);
   private readonly renderer = new THREE.WebGLRenderer({
     antialias: true,
     alpha: false,
@@ -21,6 +23,7 @@ export class VoidpulseApp {
     ...DEFAULT_JELLYFISH_PARAMS,
   };
   private readonly jellyfish: CelestialJellyfish;
+  private readonly cameraController: OrbitCameraController;
   private readonly controls;
   private readonly clock = new THREE.Clock();
   private readonly reducedMotionQuery = window.matchMedia(
@@ -32,8 +35,14 @@ export class VoidpulseApp {
   private disposed = false;
 
   constructor(private readonly root: HTMLElement) {
-    this.scene.background = new THREE.Color(0x05060a);
-    this.camera.position.set(0, 0, 7);
+    this.scene.background = new THREE.Color(0x020714);
+    this.camera.position.set(0, 0, 5.5);
+
+    this.grid.rotation.x = Math.PI / 2;
+    this.grid.material.transparent = true;
+    this.grid.material.opacity = 0.22;
+    this.grid.material.depthWrite = false;
+    this.scene.add(this.grid);
 
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -48,11 +57,16 @@ export class VoidpulseApp {
       this.renderer,
       this.params,
     );
+    this.cameraController = new OrbitCameraController(
+      this.camera,
+      this.renderer.domElement,
+    );
     this.controls = createControls(this.params);
   }
 
   start(): void {
     this.resize();
+    this.cameraController.connect();
     window.addEventListener("resize", this.resize, { passive: true });
     document.addEventListener("visibilitychange", this.handleVisibilityChange);
     this.reducedMotionQuery.addEventListener(
@@ -86,7 +100,11 @@ export class VoidpulseApp {
     window.removeEventListener("pagehide", this.handlePageHide);
     window.removeEventListener("pageshow", this.handlePageShow);
     this.controls.destroy();
+    this.cameraController.dispose();
     this.jellyfish.dispose();
+    this.scene.remove(this.grid);
+    this.grid.geometry.dispose();
+    this.grid.material.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();
   }
@@ -106,6 +124,7 @@ export class VoidpulseApp {
 
     const dt = Math.min(this.clock.getDelta(), MAX_DELTA_SECONDS);
     this.jellyfish.update(dt);
+    this.cameraController.update(dt, this.params.cameraDrift);
     this.jellyfish.render();
   };
 
@@ -136,6 +155,7 @@ export class VoidpulseApp {
     if (this.disposed) return;
 
     this.jellyfish.update(0);
+    this.cameraController.update(0, 0);
     this.jellyfish.render();
   }
 
