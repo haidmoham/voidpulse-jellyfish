@@ -24,6 +24,8 @@ export class VerletPhysics {
 
     constructor(renderer){
         this.renderer = renderer;
+        const usesMobileBudget = window.matchMedia?.("(pointer: coarse)").matches || window.innerWidth < 720;
+        this.stepsPerSecond = usesMobileBudget ? 180 : 360;
     }
 
     addObject(object) {
@@ -174,8 +176,7 @@ export class VerletPhysics {
             console.error("Verlet system not yet baked!");
         }
 
-        const stepsPerSecond = 360;
-        const timePerStep = 1 / stepsPerSecond;
+        const timePerStep = 1 / this.stepsPerSecond;
         interval = Math.max(Math.min(interval, 1/60), 0.0001);
         this.timeSinceLastStep += interval;
 

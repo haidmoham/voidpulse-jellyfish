@@ -3,7 +3,8 @@ import type { AureliaScene } from "../vendor/aurelia/AureliaScene.js";
 import { OrbitCameraController } from "./OrbitCameraController";
 
 const MAX_DELTA_SECONDS = 1 / 20;
-const MAX_PIXEL_RATIO = 2;
+const DESKTOP_MAX_PIXEL_RATIO = 2;
+const MOBILE_MAX_PIXEL_RATIO = 1.25;
 const CAMERA_DRIFT = 0.35;
 
 export class VoidpulseApp {
@@ -92,7 +93,12 @@ export class VoidpulseApp {
   private readonly resize = (): void => {
     const width = window.innerWidth;
     const height = window.innerHeight;
-    const pixelRatio = Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO);
+    const isMobileBudget =
+      window.matchMedia("(pointer: coarse)").matches || width < 720;
+    const pixelRatio = Math.min(
+      window.devicePixelRatio || 1,
+      isMobileBudget ? MOBILE_MAX_PIXEL_RATIO : DESKTOP_MAX_PIXEL_RATIO,
+    );
     this.visual.resize(width, height, pixelRatio);
   };
 

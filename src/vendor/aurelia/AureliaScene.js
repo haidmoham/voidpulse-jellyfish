@@ -102,7 +102,7 @@ export class AureliaScene {
     })();
 
     bloomPass.threshold.value = 0.001;
-    bloomPass.strength.value = 0.35;
+    bloomPass.strength.value = 0.28;
     bloomPass.radius.value = 0.8;
   }
 
@@ -130,6 +130,7 @@ export class AureliaScene {
 
   dispose() {
     this.postProcessing?.dispose?.();
+    this.medusa?.dispose?.();
     this.renderer.dispose();
   }
 }

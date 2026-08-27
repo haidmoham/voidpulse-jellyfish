@@ -13,6 +13,7 @@ import {conf} from "./conf";
 import {MedusaOralArms} from "./medusaOralArms";
 import {MedusaBellGeometry} from "./medusaBellGeometry";
 import {MedusaBellPattern} from "./medusaBellPattern";
+import {CelestialCore} from "./CelestialCore";
 
 export class Medusa {
     renderer = null;
@@ -52,6 +53,7 @@ export class Medusa {
         this.bell = new MedusaBell(this);
         this.tentacles = new MedusaTentacles(this);
         this.arms = new MedusaOralArms(this);
+        this.celestialCore = new CelestialCore();
 
         this.bell.createGeometry();
         this.tentacles.createGeometry();
@@ -61,6 +63,7 @@ export class Medusa {
         this.object.add(this.bell.object);
         this.object.add(this.tentacles.object);
         this.object.add(this.arms.object);
+        this.transformationObject.add(this.celestialCore.object);
     }
 
     async bake() { }
@@ -89,6 +92,7 @@ export class Medusa {
         this.time += delta * (1.0 + noise2D(this.noiseSeed, elapsed*0.1) * 0.1 + this.charge * 0.5);
         this.phase = ((this.time * 0.2) % 1.0) * Math.PI * 2;
         this.updatePosition(delta, elapsed);
+        this.celestialCore.update(elapsed);
         //return await this.bridge.update();
     }
 
@@ -112,6 +116,10 @@ export class Medusa {
         MedusaBellGeometry.materialInner.roughness = roughness;
         MedusaBellGeometry.materialOuter.roughness = roughness;
 
+    }
+
+    dispose() {
+        this.celestialCore?.dispose();
     }
 
 }
