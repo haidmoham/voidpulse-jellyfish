@@ -1,0 +1,88 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  background: #05060a;
+  color: rgba(239, 245, 255, 0.9);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  min-width: 280px;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  background: #05060a;
+}
+
+.experience-canvas {
+  position: fixed;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.experience-note,
+.comfort-note {
+  position: fixed;
+  z-index: 1;
+  pointer-events: none;
+  user-select: none;
+  text-shadow: 0 1px 20px rgba(0, 0, 0, 0.8);
+}
+
+.experience-note {
+  top: clamp(1.25rem, 4vw, 3rem);
+  left: clamp(1.25rem, 4vw, 3rem);
+  display: grid;
+  gap: 0.3rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.experience-title {
+  color: rgba(239, 245, 255, 0.88);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.experience-caption {
+  color: rgba(199, 214, 239, 0.5);
+  font-size: 0.58rem;
+  letter-spacing: 0.16em;
+}
+
+.comfort-note {
+  right: clamp(1.25rem, 4vw, 3rem);
+  bottom: clamp(1.25rem, 4vw, 3rem);
+  max-width: 13rem;
+  margin: 0;
+  color: rgba(199, 214, 239, 0.4);
+  font-size: 0.62rem;
+  line-height: 1.5;
+  text-align: right;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .comfort-note {
+    color: rgba(199, 214, 239, 0.62);
+  }
+}
+
+@media (max-width: 600px) {
+  .comfort-note {
+    max-width: 10rem;
+  }
+}
