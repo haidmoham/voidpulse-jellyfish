@@ -14,7 +14,11 @@ export class Lights {
         light.position.set(100, 300, 0);
         this.object.add(light);
 
-        this.ambientLight = new THREE.HemisphereLight( 0xffffff, new THREE.Color(.1, .4, .9), 1 );
+        this.ambientLight = new THREE.HemisphereLight(
+            0xb8d8ff,
+            new THREE.Color(.012, .045, .11),
+            0.7,
+        );
         this.object.add(this.ambientLight);
     }
 

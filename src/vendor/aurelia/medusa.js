@@ -67,9 +67,9 @@ export class Medusa {
 
     updatePosition(delta, elapsed) {
         const time = this.time * 0.1;
-        const rotX = noise3D(this.noiseSeed, 13.37, time) * Math.PI * 0.2;
-        const rotY = noise3D(this.noiseSeed, 12.37, time*0.1) * Math.PI * 0.4;
-        const rotZ = noise3D(this.noiseSeed, 11.37, time) * Math.PI * 0.2;
+        const rotX = noise3D(this.noiseSeed, 13.37, time) * Math.PI * 0.055;
+        const rotY = noise3D(this.noiseSeed, 12.37, time*0.1) * Math.PI * 0.2;
+        const rotZ = noise3D(this.noiseSeed, 11.37, time) * Math.PI * 0.055;
         this.transformationObject.rotation.set(rotX,rotY,rotZ, "XZY");
 
         // Voidpulse keeps one Medusa anchored around the origin. The bridge still

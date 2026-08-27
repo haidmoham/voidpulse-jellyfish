@@ -60,7 +60,7 @@ export class VerletPhysics {
         console.log(this.vertexCount + " vertices");
         console.log(this.springCount + " springs");
 
-        this.uniforms.dampening = uniform(0.998);
+        this.uniforms.dampening = uniform(0.985);
         this.uniforms.camPos = uniform(new THREE.Vector3());
         this.uniforms.mouseRay = uniform(new THREE.Vector3());
 
@@ -136,6 +136,10 @@ export class VerletPhysics {
             const ptrEnd = ptrStart.add(influencerPtr.y).toVar();
             const force = this.forceData.element(instanceIndex).toVar();
             force.mulAssign(this.uniforms.dampening);
+            // Aurelia's strands normally trail behind a continuously rising
+            // Medusa. Voidpulse anchors one at the origin, so retain that
+            // directional tension with a small, stable downward bias.
+            force.y.subAssign(0.0000015);
             Loop({ start: ptrStart, end: ptrEnd,  type: 'uint', condition: '<' }, ({ i })=>{
                 const springPtr = this.influencerData.element(i);
                 const springForce = this.springForceData.element(uint(springPtr.abs()) - uint(1));

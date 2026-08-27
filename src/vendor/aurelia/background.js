@@ -55,7 +55,7 @@ export class Background {
         value.mulAssign(1.3);
 
         const y = rayDir.y.mul(0.5).add(0.5);
-        const colorTop = vec3(.1, .4, .9);
+        const colorTop = vec3(.012, .07, .16);
         const color = colorTop.mul(y).mul(value).toVar();
 
         const dither = hash23(screenUV).sub(0.5).mul(1.0/255);
