@@ -92,7 +92,7 @@ export class Medusa {
         this.time += delta * (1.0 + noise2D(this.noiseSeed, elapsed*0.1) * 0.1 + this.charge * 0.5);
         this.phase = ((this.time * 0.2) % 1.0) * Math.PI * 2;
         this.updatePosition(delta, elapsed);
-        this.celestialCore.update(elapsed);
+        this.celestialCore.update(elapsed, this.phase, this.charge);
         //return await this.bridge.update();
     }
 
