@@ -76,11 +76,7 @@ export class VoidpulseApp {
     window.addEventListener("pagehide", this.handlePageHide);
     window.addEventListener("pageshow", this.handlePageShow);
 
-    if (this.reducedMotion) {
-      this.renderStillFrame();
-    } else {
-      this.startLoop();
-    }
+    this.startLoop();
   }
 
   dispose(): void {
@@ -120,11 +116,14 @@ export class VoidpulseApp {
   };
 
   private readonly frame = (): void => {
-    if (this.disposed || this.reducedMotion || document.hidden) return;
+    if (this.disposed || document.hidden) return;
 
     const dt = Math.min(this.clock.getDelta(), MAX_DELTA_SECONDS);
     this.jellyfish.update(dt);
-    this.cameraController.update(dt, this.params.cameraDrift);
+    this.cameraController.update(
+      dt,
+      this.reducedMotion ? 0 : this.params.cameraDrift,
+    );
     this.jellyfish.render();
   };
 
@@ -132,7 +131,6 @@ export class VoidpulseApp {
     if (
       this.disposed ||
       this.loopRunning ||
-      this.reducedMotion ||
       document.hidden
     ) {
       return;
@@ -151,19 +149,9 @@ export class VoidpulseApp {
     this.renderer.setAnimationLoop(null);
   }
 
-  private renderStillFrame(): void {
-    if (this.disposed) return;
-
-    this.jellyfish.update(0);
-    this.cameraController.update(0, 0);
-    this.jellyfish.render();
-  }
-
   private readonly handleVisibilityChange = (): void => {
     if (document.hidden) {
       this.stopLoop();
-    } else if (this.reducedMotion) {
-      this.renderStillFrame();
     } else {
       this.startLoop();
     }
@@ -173,13 +161,6 @@ export class VoidpulseApp {
     event: MediaQueryListEvent,
   ): void => {
     this.reducedMotion = event.matches;
-
-    if (this.reducedMotion) {
-      this.stopLoop();
-      this.renderStillFrame();
-    } else {
-      this.startLoop();
-    }
   };
 
   private readonly handlePageHide = (event: PageTransitionEvent): void => {
@@ -193,10 +174,6 @@ export class VoidpulseApp {
   private readonly handlePageShow = (event: PageTransitionEvent): void => {
     if (!event.persisted || this.disposed) return;
 
-    if (this.reducedMotion) {
-      this.renderStillFrame();
-    } else {
-      this.startLoop();
-    }
+    this.startLoop();
   };
 }
