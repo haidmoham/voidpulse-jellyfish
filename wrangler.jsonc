@@ -1,0 +1,11 @@
+{
+  "name": "voidpulse-jellyfish",
+  "account_id": "7ccfdec2aec5b063d5c1a1a476e4ca83",
+  "compatibility_date": "2026-09-04",
+  "workers_dev": false,
+  "assets": { "directory": "./dist" },
+  "routes": [
+    { "pattern": "jellyfish.shin86.dev", "custom_domain": true },
+    { "pattern": "jellyfish.mhaider.dev", "custom_domain": true }
+  ]
+}
