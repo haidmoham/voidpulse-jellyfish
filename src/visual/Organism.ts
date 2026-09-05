@@ -6,13 +6,14 @@ const bellDeformation = `
   vec3 deformBell(vec3 p,float along,float angle){
     along=clamp(along,0.,1.);
     float clench=uThreat*uThreat*(3.-2.*uThreat);
-    float contraction=clench*.7+uBass*.3;
+    float drive=1.+uForce*.16;
+    float contraction=min(1.3,(clench*.85+uBass*.3)*drive);
     float skirt=pow(along,3.);
     float asymmetry=.8+.2*sin(angle*3.+.7);
     float drift=.025*sin(uTime*.36-along*3.)*(1.-clench*.5);
-    p.xz*=1.+drift*along+uForce*.012*along-contraction*(.045+.19*along)*asymmetry;
+    p.xz*=1.+drift*along+uForce*.012*along-contraction*(.065+.28*along)*asymmetry;
     p.y+=skirt*(.035+uMid*.10+uTreble*.035)*sin(angle*8.+uTime*.28)*(1.-clench*.45);
-    p.y+=contraction*(.14+.16*skirt)*asymmetry;
+    p.y+=contraction*(.20+.30*skirt)*asymmetry;
     return p;
   }`;
 
@@ -24,19 +25,23 @@ const tendrilDeformation = `
     along=clamp(along,0.,1.);
     float bend=pow(along,1.25),tip=pow(along,2.5);
     float clench=uThreat*uThreat*(3.-2.*uThreat);
+    float drive=1.+uForce*.22;
     float chosen=.3+.7*pow(max(.5+.5*sin(phase*2.3+.4),0.),3.);
     float music=min(1.4,uEnergy*.5+uForce*.35+uBass*.25);
     float held=1.-clench*.35;
-    p.xz*=1.+uBass*.025-clench*(.12+.17*bend);
-    p.x+=bend*held*(.10+music*.62)*sin(along*5.5-uTime*.64+phase);
-    p.z+=bend*held*(.08+music*.48)*cos(along*6.5-uTime*.55+phase);
-    p.y+=clench*(.08+bend*(.45+chosen*.4));
-    p-=uWatcher*clench*bend*(.13+chosen*.24);
+    p.xz*=1.+uBass*.06-clench*(.16+.23*bend);
+    p.x+=bend*held*(.10+music*.95)*sin(along*5.5-uTime*.64+phase);
+    p.z+=bend*held*(.08+music*.74)*cos(along*6.5-uTime*.55+phase);
+    p.y+=clench*drive*(.08+bend*(.70+chosen*.65));
+    p-=uWatcher*clench*bend*(.20+chosen*.38)*drive;
     float reach=uReach*chosen;
-    p+=uWatcher*tip*(reach*(2.85+uForce*.18)+uBass*.20*chosen);
+    p+=uWatcher*tip*(reach*(3.65+uForce*.42)+uBass*.30*chosen);
     vec3 sideways=vec3(uWatcher.z,0.,-uWatcher.x);
-    p+=sideways*tip*reach*sin(phase*1.7)*.88;
-    p.y+=reach*(tip*.43+pow(along,7.)*.56);
+    p+=sideways*tip*reach*sin(phase*1.7)*1.45*drive;
+    p.y+=reach*(tip*.60+pow(along,7.)*.80);
+    // A broad traveling bend lashes the released arms without changing their light.
+    float lash=sin(along*7.-uTime*1.15+phase)*bend*reach*held;
+    p+=sideways*lash*.48*drive;
     p.xz+=vec2(sin(along*10.-uTime*.48+phase*2.),cos(along*8.-uTime*.42+phase))*uMid*.22*bend*held;
     p+=sideways*pow(along,4.)*uTreble*.16*sin(along*9.-uTime*.5+phase);
     return p;
