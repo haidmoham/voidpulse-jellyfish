@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "test:audio": "node scripts/test-audio.mjs",
+    "test:visual": "node scripts/test-render-order.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview"

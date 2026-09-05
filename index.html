@@ -3,66 +3,83 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#03040b" />
-    <meta name="description" content="A jellyfish. A black hole. An impossible living universe. Enter voidpulse, an interactive cosmic artwork." />
-    <meta property="og:title" content="voidpulse — the abyss is alive" />
-    <meta property="og:description" content="An impossible organism at the edge of light." />
-    <title>voidpulse — the abyss is alive</title>
+    <meta name="theme-color" content="#030707" />
+    <meta name="description" content="No eyes. Still watching. Yes, you. At the back. A jellyfish, a black hole, and whatever it does to your music." />
+    <meta property="og:title" content="voidpulse — go on. stare." />
+    <meta property="og:description" content="One of a kind. God willing." />
+    <title>voidpulse — go on. stare.</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   </head>
   <body>
-    <main id="app" aria-label="voidpulse interactive cosmic artwork">
+    <main id="app" aria-label="voidpulse cosmic music visualizer">
       <header class="masthead">
-        <a class="wordmark" href="/" aria-label="voidpulse home"><span class="sigil" aria-hidden="true">◉</span>voidpulse<span class="edition">/ 002</span></a>
-        <div class="classification"><span class="status-dot"></span> an impossible organism</div>
+        <a class="wordmark" href="/" aria-label="voidpulse home"><span class="sigil" aria-hidden="true">◉</span>voidpulse<span class="edition">/ the only one. we hope.</span></a>
+        <div class="classification"><span class="status-dot"></span> oh. it likes you.</div>
       </header>
-      <div class="side-coordinate" aria-hidden="true">between the deep sea & deep space</div>
+      <div class="side-coordinate" aria-hidden="true">come closer · closer · that’s enough</div>
       <section class="title-block" aria-label="about this artwork">
-        <p class="eyebrow"><span></span> abyssal singularity</p>
-        <h1>the abyss<br>is <em>alive.</em></h1>
-        <p class="description">a soft body. an infinite gravity.<br>something beautiful that should not exist.</p>
-        <section class="music-panel" id="music-panel" aria-label="music player">
-          <p class="music-invitation">give the deep a soundtrack.</p>
-          <button id="music-play" class="music-play" aria-pressed="false">play music</button>
-          <div class="music-track-row"><span class="music-meter" aria-hidden="true"><i></i><i></i><i></i></span><p class="music-track" id="music-title">night owl · broke for free</p></div>
-          <p class="music-credit" id="music-credit"><a href="https://brokeforfree.bandcamp.com/track/night-owl" target="_blank" rel="noopener noreferrer">artist & track ↗</a><span> · </span><a href="/music-credits.html" target="_blank" rel="noopener noreferrer">music credit</a></p>
-          <div class="music-timeline"><input id="music-seek" type="range" min="0" max="1" value="0" step="0.1" aria-label="song position" disabled><span id="music-time">0:00 / 0:00</span></div>
-          <label class="music-volume">volume<input id="music-volume" type="range" min="0" max="100" value="55" aria-label="music volume"></label>
-          <label class="music-intensity">intensity<input id="music-intensity" type="range" min="0" max="300" value="160" step="5" aria-label="visual intensity"><output id="intensity-value" for="music-intensity">160%</output></label>
-          <p id="music-tab-note" class="music-tab-note" hidden>pause or change volume in your music tab.</p>
-          <p id="music-message" class="music-message" role="status" aria-live="polite" hidden></p>
-          <details id="music-options" class="music-options">
-            <summary>choose your music</summary>
-            <div class="music-options-body">
-              <button id="music-choose">choose a song from this device</button>
-              <p>mp3, m4a, wav and more. your file stays here.</p>
-              <button id="music-tab">YouTube / other tab</button>
-              <p>open this site and your music in the same Chrome or Edge browser. choose the music tab and turn on “share tab audio”.</p>
-              <p>no sharing window? open this site in Chrome or Edge outside the app.</p>
-              <button id="music-demo" hidden>back to the demo</button>
-            </div>
-          </details>
-          <input type="file" id="music-file" accept="audio/*,.mp3,.m4a,.wav,.ogg,.flac,.aac,.opus" hidden>
-          <audio id="music-audio" preload="none" loop></audio>
-        </section>
+        <p class="eyebrow"><span></span> roll up. keep your hands inside.</p>
+        <h1 aria-label="go on. stare.">go on.<br><em>stare.</em></h1>
+        <p class="description">no eyes. still watching.<br>yes, you. at the back.</p>
+        <p class="specimen-index" aria-hidden="true">one of a kind. <span>god willing.</span></p>
       </section>
-      <div class="specimen-note" aria-hidden="true"><span class="crosshair">+</span><span>gravitational organism<br><span class="dim">specimen no. 001 · unclassified</span></span></div>
-      <div class="loading" role="status"><span></span> entering the deep</div>
+      <details class="visual-settings" id="visual-settings">
+        <summary><span class="settings-symbol" aria-hidden="true">⟁</span> pull a string <span class="settings-plus" aria-hidden="true">+</span></summary>
+        <div class="settings-body">
+          <p class="panel-eyebrow">careful. that one’s attached.</p>
+          <label for="visual-preset">pick your nightmare</label>
+          <select id="visual-preset"><option value="abyss">abyss · cold meat</option><option value="ritual">ritual · red room</option><option value="venom">venom · in the corner</option></select>
+          <label class="music-intensity" for="music-intensity"><span>make it twitch</span><output id="intensity-value" for="music-intensity">160%</output></label>
+          <input id="music-intensity" type="range" min="0" max="300" value="160" step="5" aria-label="visual intensity">
+          <label for="visual-bloom">light through the skin</label>
+          <input id="visual-bloom" type="range" min="0" max="150" value="75" aria-label="bloom strength">
+          <label for="visual-detail">detail</label>
+          <select id="visual-detail"><option value="auto">adaptive</option><option value="high">high</option><option value="low">light</option></select>
+          <div class="settings-actions"><button id="capture" title="save a snapshot">capture ↗</button><button id="immersive" aria-pressed="false" title="hide interface · press escape to return">immerse ⤢</button></div>
+          <p class="settings-hint">space to play · ← → seek<br>escape to leave immersion</p>
+        </div>
+      </details>
+      <aside class="signal-readout" aria-label="live audio analysis">
+        <p class="panel-eyebrow">lovely, isn’t it?</p>
+        <dl><div><dt>bass / the twitch</dt><dd id="meter-bass">00</dd></div><div><dt>mid / wet breathing</dt><dd id="meter-mid">00</dd></div><div><dt>treble / little teeth</dt><dd id="meter-treble">00</dd></div><div class="bpm-readout"><dt>pulse / est. bpm</dt><dd id="meter-bpm">—</dd></div></dl>
+        <p class="signal-caption">don’t tap. it taps back.</p>
+      </aside>
+      <div class="specimen-note" aria-hidden="true"><span class="crosshair">+</span><span>that bit?<br><span class="dim">that’s where the light goes to die.</span></span></div>
+      <div class="loading" role="status"><span></span> shh. it’s turning around.</div>
       <p id="status" role="status" aria-live="polite"></p>
       <footer class="experience-footer">
-        <p class="gesture-note">drag to orbit <span>·</span> scroll to approach</p>
+        <p class="gesture-note">drag to orbit <span>·</span> scroll to descend</p>
         <nav class="view-controls" aria-label="observer position">
           <button data-view="encounter" aria-pressed="true">encounter</button>
-          <button data-view="horizon" aria-pressed="false">event horizon</button>
+          <button data-view="horizon" aria-pressed="false">horizon</button>
+          <button data-view="oracle" aria-pressed="false">oracle</button>
         </nav>
         <div class="utility-controls">
-          <button id="pulse" class="pulse-button" aria-label="send a pulse through the organism" title="send a pulse">excite <span aria-hidden="true">↗</span></button>
+          <button id="pulse" class="pulse-button" aria-label="send a pulse through the organism" title="send a pulse">provoke <span aria-hidden="true">↗</span></button>
           <span class="control-divider"></span>
           <button id="motion" class="icon-button" aria-label="pause motion" aria-pressed="false" title="pause motion"><span class="pause-mark" aria-hidden="true"></span></button>
           <button id="fullscreen" class="icon-button" aria-label="enter fullscreen" aria-pressed="false" title="fullscreen"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><path d="M7 3H3v4m10-4h4v4M3 13v4h4m10-4v4h-4"/></svg></button>
         </div>
       </footer>
-      <noscript><p class="noscript">enable JavaScript to enter this universe.</p></noscript>
+      <section class="music-panel" id="music-panel" aria-label="music player">
+        <div class="console-heading"><p class="panel-eyebrow"><span class="status-dot"></span> a little music for the thing</p><span class="console-caption">go on. it gets restless in the quiet.</span></div>
+        <div class="transport-row">
+          <button id="music-play" class="music-play" aria-pressed="false">play music</button>
+          <div class="track-info"><div class="music-track-row"><span class="music-meter" aria-hidden="true"><i></i><i></i><i></i></span><p class="music-track" id="music-title">come play with me · kevin macleod</p></div>
+            <p class="music-credit" id="music-credit"><a href="https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1400042" target="_blank" rel="noopener noreferrer">kevin macleod ↗</a><span> · </span><a href="/music-credits.html" target="_blank" rel="noopener noreferrer">cc by 4.0 · music credit</a></p>
+          </div>
+          <div class="spectrum-wrap"><canvas id="spectrum" width="440" height="72" aria-label="live frequency spectrum" role="img"></canvas><div class="spectrum-labels" aria-hidden="true"><span>bass</span><span>frequency response</span><span>treble</span></div></div>
+          <label class="music-volume" for="music-volume"><span>volume</span><input id="music-volume" type="range" min="0" max="100" value="55" aria-label="music volume"></label>
+          <button id="music-repeat" class="repeat-button" aria-pressed="true" aria-label="repeat track" title="repeat track">↻</button>
+          <details id="music-options" class="music-options"><summary>audio source <span aria-hidden="true">↗</span></summary><div class="music-options-body"><p class="panel-eyebrow">give it something to listen to</p><button id="music-choose">↑ choose a song</button><p>mp3, m4a, wav and more.<br>your file stays on your device.</p><button id="music-tab">↗ youtube / other tab</button><p>use chrome or edge on a computer. choose the music tab and enable “share tab audio”.</p><p>no sharing window? open this site in chrome or edge outside the app.</p><button id="music-demo" hidden>↺ return to the demo</button></div></details>
+        </div>
+        <div class="music-timeline"><input id="music-seek" type="range" min="0" max="1" value="0" step="0.1" aria-label="song position" disabled><span id="music-time">0:00 / 0:00</span></div>
+        <p id="music-tab-note" class="music-tab-note" hidden>pause or change volume in your music tab.</p>
+        <p id="music-message" class="music-message" role="status" aria-live="polite" hidden></p>
+        <input type="file" id="music-file" accept="audio/*,.mp3,.m4a,.wav,.ogg,.flac,.aac,.opus" hidden>
+        <audio id="music-audio" preload="none" loop></audio>
+      </section>
+      <noscript><p class="noscript">enable javascript to enter this universe.</p></noscript>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>

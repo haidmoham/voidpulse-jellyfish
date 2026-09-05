@@ -1,6 +1,26 @@
 # Third-party notices
 
-## Demo music: Night Owl
+## Demo music: Come Play with Me
+
+“Come Play with Me” by Kevin MacLeod (incompetech.com).
+
+- Artist and track: https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1400042
+- Artist catalog: https://incompetech.com/music/royalty-free/pieces.json
+- Original MP3: https://incompetech.com/music/royalty-free/mp3-royaltyfree/Come%20Play%20with%20Me.mp3
+- License: Creative Commons Attribution 4.0 International,
+  https://creativecommons.org/licenses/by/4.0/
+- ISRC: `USUAN1400042`.
+- Local asset: `public/audio/come-play-with-me.mp3`.
+- Downloaded MP3 SHA-256: `e0e272f2e5c2bf606575e623de605f905363cfc7c1f39bd7a28fac868babb5ab`.
+- File duration: 131.605 seconds (artist catalog: 2:12).
+
+The artist's track page and its current attribution code were checked on
+2026-09-05. The file is the original stereo 44.1 kHz MP3 from the artist's
+download link. No edits or conversion were made. The player can repeat the
+full recording. No endorsement is implied. Visible attribution and the
+license link are provided in `public/music-credits.html` and the music player.
+
+## Preserved previous demo music: Night Owl
 
 “Night Owl” by Broke For Free, from *Directionless EP* (2011).
 
