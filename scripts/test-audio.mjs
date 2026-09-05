@@ -116,4 +116,29 @@ assert.ok(canceledStream.tracks.every(t=>t.stopped),'capture arriving after canc
 player.dispose();assert.equal(audio.paused,true);
 assert.equal(player.state.playing,false,'disposal clears the transport state');
 player.dispose();await player.toggle();assert.equal(audio.paused,true,'disposed players cannot resume');
-console.log('Audio checks passed: measured features, uncertain tempo, playback, source cleanup, and no invented beats.');
+const {ThreatResponse}=await import(moduleUrl(readFileSync(new URL('../src/visual/ThreatResponse.ts',import.meta.url),'utf8')));
+const threat=new ThreatResponse();
+for(let i=0;i<120;i++)assert.equal(threat.update(1/60,0,0,0,true),0,'silence cannot invent an attack');
+let attack=threat.update(1/60,.3,.5,0,true);
+for(let i=0;i<5;i++)attack=threat.update(1/60,.3,.5,0,true);
+assert.ok(attack>.25&&attack<.6,'a measured attack eases into contraction instead of snapping');
+let previousAttack=attack,maxChange=0,maxReach=0;
+for(let i=0;i<180;i++){
+  attack=threat.update(1/60,.3,.5,0,true);
+  maxChange=Math.max(maxChange,Math.abs(attack-previousAttack));previousAttack=attack;
+  maxReach=Math.max(maxReach,threat.reach);
+  assert.ok(attack>=0&&attack<=1,'the eased response stays bounded');
+}
+assert.ok(maxChange<.09,'a held beat has no abrupt frame-to-frame displacement');
+assert.ok(maxReach>.1,'the reaching motion trails the contraction');
+assert.ok(attack<.001,'a sustained band does not retrigger the attack');
+const provoked=threat.update(1/60,0,0,1,true);
+assert.ok(provoked>0&&provoked<.06,'the manual provoke control also eases in');
+assert.equal(threat.update(1/60,1,1,1,false),0,'paused or zero-intensity motion clears the response');
+const afterOneSecond=rate=>{
+  const response=new ThreatResponse();let value=0;
+  for(let i=0;i<rate;i++)value=response.update(1/rate,.3,.5,0,true);
+  return value;
+};
+assert.ok(Math.abs(afterOneSecond(30)-afterOneSecond(120))<.025,'motion timing remains consistent across frame rates');
+console.log('Audio and motion checks passed: measured features, uncertain tempo, playback, source cleanup, and attack/hold/release without invented beats.');

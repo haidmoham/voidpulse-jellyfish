@@ -4,6 +4,11 @@ An interactive jellyfish that contains a black hole. An original Three.js
 WebGL 2 renderer combines a luminous mantle, trailing filaments, a folded
 accretion disk, and an artistic gravitational-lensing effect.
 
+The eldritch edition turns the organism into a listening instrument. A dark
+event horizon remains inside a recognizable jellyfish bell. Music drives its
+vessels, tentacles, accretion, and surrounding dust. The listening station shows
+a live 64-band spectrum, waveform, three band meters, and an estimated tempo.
+
 The scene takes direction from the earlier VoidPulse Jellyfish artwork,
 *Interstellar*, and reusable design units from `design-vocabulary`.
 See [art direction](docs/art-direction.md) for references and design decisions.
@@ -23,19 +28,30 @@ acceleration enabled.
 
 ## Controls
 
-- Press **play music** to start the included track, “Night Owl” by Broke For Free.
+- Press **play music** to start the included track, “Come Play with Me” by Kevin MacLeod.
 - Press **pause music** to pause it. Press play to resume from the same position.
 - Use the song-position slider to seek. Use **volume** to change loudness.
 - Use **intensity** from 0% to 300% to control audio-driven deformation.
-  High settings increase tentacle whipping and disk expansion. Brightness remains bounded.
-- Open **choose your music** to select a local song or connect another browser tab.
+  High settings increase tentacle contraction, reaching, and disk folding. Glow stays steady.
+- Open **audio source** to select a local song or connect another browser tab.
   Local files are played through a blob URL. They are not uploaded.
 - Select **encounter** for the full organism view.
 - Select **event horizon** to approach the nucleus.
 - Drag to orbit. Scroll or pinch to zoom.
 - Use the pause button to stop automatic motion. Press it again to resume.
-- Select **excite**, or double-click the canvas, to send a temporary pulse.
+- Select **provoke**, or double-click the canvas, to send a temporary pulse.
 - Use the fullscreen button to enter or leave fullscreen where supported.
+- Select **oracle** for an elevated view of the bell and accretion disk.
+- Open the visual settings to choose **abyss**, **ritual**, or **venom**.
+  These palettes change the organism, cosmic atmosphere, and spectrum together.
+- Adjust **bloom** to control glow. Choose **auto**, **high**, or **low** detail
+  to control render resolution. Auto reduces resolution after sustained slow frames.
+- Use **hide interface**, or press **h**, to enter immersive mode. Use the
+  return button, **h**, or **escape** to restore the listening station.
+- Use **capture** to download a PNG of the rendered artwork.
+- Use **repeat** to switch looping on or off. Press **space** to play or pause.
+  Press the left or right arrow to seek five seconds. Keyboard shortcuts leave
+  focused controls to handle their own keys.
 
 Manual orbit stops automatic camera rotation. Selecting a view restores it.
 The operating system's reduced-motion preference starts the artwork static and
@@ -68,10 +84,16 @@ and [YouTube player API](https://developers.google.com/youtube/iframe_api_refere
 npm run build
 npm run preview
 npm run test:audio
+npm run test:visual
 ```
 
 The build checks TypeScript and writes the production bundle to `dist/`.
 The preview command serves that bundle locally.
+The visual check verifies that canvas resizes occur before drawing and pause
+preserves the current pose. It rejects the earlier adaptive-quality blank frame.
+With the development server running, open `/render-check.html` and select
+**run render check** for actual GPU validation. It reads floating-point scene
+and bloom output for 40 repeated poses. The harness is not a production entry.
 The audio checks cover frequency-band separation, silence, source switching,
 failure recovery, late capture results, and captured-track cleanup.
 Capture lifecycle checks use browser API doubles. Browser sharing permissions
@@ -108,17 +130,24 @@ These commands document deployment setup. They do not certify a live release.
 - `src/audio/MusicPlayer.ts` owns the media element, Web Audio graph, file URLs,
   tab capture, and source lifecycle.
 - `src/audio/AudioFeatures.ts` measures waveform energy, bass, treble, and onsets.
+- `src/audio/AudioTelemetry.ts` draws the measured spectrum and waveform and
+  updates band and tempo readouts.
 - `src/audio/MusicControls.ts` connects the accessible controls to playback.
 - `src/style.css` places the DOM interface over the canvas.
 
 `MusicPlayer` implements `SignalSource` and connects through `setSignalSource()`.
 The analyser measures actual samples before the output gain. Volume changes
 therefore do not change visual intensity. Bass and energy deform the bell and
-disk. Treble brightens fine filaments. Smoothed onset envelopes add a bounded
-surge. The intensity slider scales motion separately from light.
+disk. Smoothed onset envelopes drive contractions and delayed reaches.
+The intensity slider scales motion. Material brightness and bloom stay steady.
 The animation clock integrates changing speed. It does not multiply total
 elapsed time by a changing audio value, which would cause phase jumps.
 Silence and pause remove the audio signal. No microphone access is requested.
+
+Mids supply a separate response channel for the mantle. The spectrum uses
+logarithmic frequency spacing. Tempo is an estimate from consistent detected
+onsets. Its readout stays empty until there is enough evidence. Sparse music,
+syncopation, and changing tempo can prevent a stable estimate.
 
 `SignalSource`, `SignalFrame`, and `Readonly` exist only during TypeScript
 checking. They are erased from the JavaScript build. The source object's
@@ -131,11 +160,41 @@ produce the visual response.
 The scene caps pixel density and can reduce resolution after sustained slow
 frames. It pauses rendering while the document is hidden.
 
+The horror motion uses `ThreatResponse` to turn measured attacks into eased
+contractions. Its spring preserves position and velocity when a new beat
+arrives. A delayed response drives the reaching tentacles. Bass does not
+repeatedly trigger an attack while it remains constant. The motion checks
+cover silence, bounded displacement, delayed reach, and frame-rate consistency.
+Adaptive detail rechecks slow frames throughout the session. High detail
+keeps the higher pixel-density cap.
+
+The renderer removes deliberate twinkles and beat-driven light changes.
+Broad veins and soft mesh ribbons smooth small details. A fixed five-sample
+filter smooths edges after lens distortion. Dark ribbon folds, disk shadows,
+and asymmetric reaching provide the horror detail. The lens response trails
+the body, so fast musical attacks do not pump the whole scene.
+
+The renderer retains its drawing buffer between presentations. Shader powers
+use nonnegative inputs. Squared signed distances use multiplication because
+GLSL [`pow` is undefined for negative inputs](https://registry.khronos.org/OpenGL/specs/gl/GLSLangSpec.4.20.pdf).
+A finite-color filter runs before
+bloom to prevent invalid pixel values from spreading through its blur chain.
+The GPU harness checks the actual shaders; TypeScript cannot validate GLSL
+strings. The numerical guards execute on the GPU at runtime.
+
+`VisualPreset` and `VisualQuality` are TypeScript unions. They restrict control
+values during checking and disappear from the JavaScript output. Browser
+events still run at runtime. Those handlers update Three.js shader uniforms.
+The GPU uses those numbers and colors to draw each palette and audio response.
+`AudioTelemetry` reads the same `SignalFrame` as the scene. Its Canvas 2D calls
+draw real measurements without a second audio analyser.
+
 ## Included recording
 
-The demo is “Night Owl” by Broke For Free, a released indie-electronic track.
-The verified archive recording uses CC BY 3.0. It was converted to MP3 without
-editing the music. See [music credits](public/music-credits.html) and
+The demo is “Come Play with Me” by Kevin MacLeod. Its eerie voice, woodwind,
+low strings, and glockenspiel support the sideshow theme. The artist's
+recording uses CC BY 4.0. The official MP3 remains unchanged.
+See [music credits](public/music-credits.html) and
 [third-party notices](THIRD_PARTY_NOTICES.md) for artist, source, license, and checksum.
 No generated music is included. Playback requires an explicit click.
 

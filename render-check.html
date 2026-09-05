@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>local gpu render check</title>
+  <style>
+    body{margin:32px auto;padding:0 20px;max-width:960px;background:#111713;color:#e0e6dd;font:15px/1.6 system-ui,sans-serif}
+    h1{font-size:24px;font-weight:500}button{padding:12px 18px;font:inherit;cursor:pointer;background:#d9e5d3;color:#132015;border:0;border-radius:4px}
+    button:disabled{opacity:.5;cursor:wait}button:focus-visible{outline:3px solid #d5aa83;outline-offset:4px}
+    canvas{width:320px;max-width:100%;height:auto;image-rendering:pixelated;border:1px solid #65765d}
+    pre{white-space:pre-wrap;overflow-wrap:anywhere;padding:16px;background:#060b08;border:1px solid #384333;font-size:12px}
+    #progress{min-height:28px}summary{cursor:pointer;padding:8px 0}
+  </style>
+</head>
+<body>
+  <h1>local gpu render check</h1>
+  <p>This development page compiles the real scene shaders. It checks 40 fixed poses at 160 × 160 pixels before and after bloom. Each pose repeats with identical inputs.</p>
+  <button id="run-check" type="button">run render check</button>
+  <p id="progress" role="status" aria-live="polite">ready · no checks have run</p>
+  <canvas id="preview" width="160" height="160" aria-label="last checked render" role="img"></canvas>
+  <pre id="result">waiting for a run</pre>
+  <details><summary>per-pose measurements</summary><pre id="measurements"></pre></details>
+  <script type="module" src="/scripts/check-render-gpu.ts"></script>
+</body>
+</html>
