@@ -2,11 +2,12 @@ import type { SignalFrame, SignalSource } from '../core/Signal';
 import { AudioFeatures } from './AudioFeatures';
 
 type MusicKind='included'|'file'|'tab';
-export interface MusicState {kind:MusicKind;title:string;playing:boolean;busy:boolean;message:string;}
-const empty:Readonly<SignalFrame>={energy:0,bass:0,treble:0,onset:0};
+export interface MusicState {kind:MusicKind;title:string;playing:boolean;busy:boolean;message:string;duration:number;currentTime:number;volume:number;loop:boolean;bpm:number|null;}
+const empty:Readonly<SignalFrame>={energy:0,bass:0,mids:0,treble:0,onset:0,spectrum:new Float32Array(64),waveform:new Float32Array(128),bpm:null,beatConfidence:0};
 
 export class MusicPlayer implements SignalSource {
-  readonly state:MusicState={kind:'included',title:'night owl · broke for free',playing:false,busy:false,message:''};
+  readonly state:MusicState={kind:'included',title:'come play with me · kevin macleod',playing:false,busy:false,message:'',duration:0,currentTime:0,volume:.55,loop:true,bpm:null};
+  private readonly events=new AbortController();
   private context:AudioContext|null=null;
   private analyser:AnalyserNode|null=null;
   private mediaSource:MediaElementAudioSourceNode|null=null;
@@ -14,8 +15,8 @@ export class MusicPlayer implements SignalSource {
   private analysisSink:GainNode|null=null;
   private stream:MediaStream|null=null;
   private streamSource:MediaStreamAudioSourceNode|null=null;
-  private wave=new Uint8Array(2048);
-  private frequency=new Uint8Array(1024);
+  private wave=new Uint8Array(4096);
+  private frequency=new Uint8Array(2048);
   private readonly features=new AudioFeatures();
   private lastSample=0;
   private objectUrl:string|null=null;
@@ -26,23 +27,25 @@ export class MusicPlayer implements SignalSource {
   private silentSince:number|null=null;
 
   constructor(readonly audio:HTMLAudioElement,private readonly notify:()=>void){
-    audio.src='/audio/night-owl.mp3';audio.preload='none';audio.loop=true;
-    audio.addEventListener('playing',()=>{if(this.state.kind!=='tab'){this.state.playing=true;this.state.busy=false;this.state.message='';this.notify();}});
-    audio.addEventListener('pause',()=>{if(this.state.kind!=='tab'){this.state.playing=false;this.notify();}});
-    audio.addEventListener('ended',()=>{this.state.playing=false;this.notify();});
+    audio.src='/audio/come-play-with-me.mp3';audio.preload='none';audio.loop=true;
+    const options={signal:this.events.signal};
+    audio.addEventListener('playing',()=>{if(this.state.kind!=='tab'){this.state.playing=true;this.state.busy=false;this.state.message='';this.notify();}},options);
+    audio.addEventListener('pause',()=>{if(this.state.kind!=='tab'){this.state.playing=false;this.notify();}},options);
+    audio.addEventListener('ended',()=>{if(this.state.kind!=='tab'){this.state.playing=false;this.notify();}},options);
+    for(const event of ['loadedmetadata','durationchange','timeupdate','seeked'])audio.addEventListener(event,()=>this.updateTimeline(),options);
     audio.addEventListener('error',()=>{
-      if(this.disposed)return;
+      if(this.disposed||this.state.kind==='tab')return;
       this.state.playing=false;this.state.busy=false;
       this.state.message=this.state.kind==='file'?'that song could not play. try an mp3, or play the demo.':'the music could not load. press play to try again.';
       this.notify();
-    });
+    },options);
   }
 
   private connect():void {
     if(this.context)return;
     this.context=new AudioContext();
     this.analyser=this.context.createAnalyser();
-    this.analyser.fftSize=2048;this.analyser.smoothingTimeConstant=.35;
+    this.analyser.fftSize=4096;this.analyser.smoothingTimeConstant=.2;
     this.analyser.minDecibels=-90;this.analyser.maxDecibels=-15;
     // Keep captured audio in the rendered graph without playing it twice.
     this.analysisSink=this.context.createGain();this.analysisSink.gain.value=0;
@@ -54,6 +57,7 @@ export class MusicPlayer implements SignalSource {
   }
 
   async toggle():Promise<void>{
+    if(this.disposed)return;
     if(this.cancelCapture){this.cancelCapture();return;}
     if(this.state.kind==='tab'){this.stopTab();return;}
     if(this.state.busy)return;
@@ -62,6 +66,7 @@ export class MusicPlayer implements SignalSource {
   }
 
   private async play():Promise<void>{
+    if(this.disposed)return;
     const operation=++this.operation;
     this.state.busy=true;this.state.message='';this.notify();
     try{
@@ -85,6 +90,7 @@ export class MusicPlayer implements SignalSource {
   }
 
   async choose(file:File):Promise<void>{
+    if(this.disposed)return;
     if(!file.type.startsWith('audio/')&&!/\.(mp3|wav|m4a|aac|ogg|oga|flac|opus|aiff|webm)$/i.test(file.name)){
       this.state.message='choose a music file, such as an mp3 or m4a.';this.notify();return;
     }
@@ -94,7 +100,8 @@ export class MusicPlayer implements SignalSource {
   }
 
   async included():Promise<void>{
-    this.switchSource('included','night owl · broke for free');this.audio.src='/audio/night-owl.mp3';this.audio.load();await this.play();
+    if(this.disposed)return;
+    this.switchSource('included','come play with me · kevin macleod');this.audio.src='/audio/come-play-with-me.mp3';this.audio.load();await this.play();
   }
 
   private switchSource(kind:MusicKind,title:string):void{
@@ -102,10 +109,11 @@ export class MusicPlayer implements SignalSource {
     ++this.operation;this.audio.pause();this.releaseStream();
     if(this.objectUrl){URL.revokeObjectURL(this.objectUrl);this.objectUrl=null;}
     this.features.reset();this.lastSample=0;
-    Object.assign(this.state,{kind,title,playing:false,busy:false,message:''});
+    Object.assign(this.state,{kind,title,playing:false,busy:false,message:'',currentTime:0,duration:0,bpm:null});
   }
 
   async shareTab():Promise<void>{
+    if(this.disposed)return;
     if(this.cancelCapture)return;
     if(!navigator.mediaDevices?.getDisplayMedia){
       this.state.message='to use YouTube, open this page in Chrome or Edge on a computer. you can still choose a song here.';
@@ -146,7 +154,7 @@ export class MusicPlayer implements SignalSource {
       // Do not connect capture to speakers: the source tab already plays its sound.
       this.features.reset();
       this.silentSince=null;
-      Object.assign(this.state,{kind:'tab',title:'music from your tab',playing:true,message:''});
+      Object.assign(this.state,{kind:'tab',title:'music from your tab',playing:true,message:'',duration:0,currentTime:0,bpm:null});
       for(const track of this.stream.getTracks())track.addEventListener('ended',this.stopTab,{once:true});
     }catch(error){
       pending?.getTracks().forEach(track=>track.stop());
@@ -172,21 +180,38 @@ export class MusicPlayer implements SignalSource {
 
   private readonly stopTab=():void=>{
     ++this.operation;this.releaseStream();this.features.reset();
-    Object.assign(this.state,{kind:'included',title:'night owl · broke for free',playing:false,busy:false,message:'disconnected. press play for the demo.'});
+    Object.assign(this.state,{kind:'included',title:'come play with me · kevin macleod',playing:false,busy:false,message:'disconnected. press play for the demo.',duration:0,currentTime:0,bpm:null});
     if(this.objectUrl){URL.revokeObjectURL(this.objectUrl);this.objectUrl=null;}
-    this.audio.src='/audio/night-owl.mp3';this.audio.load();this.notify();
+    this.audio.src='/audio/come-play-with-me.mp3';this.audio.load();this.notify();
   };
 
   setVolume(value:number):void {
+    if(!Number.isFinite(value))return;
     this.volume=Math.min(1,Math.max(0,value));
+    this.state.volume=this.volume;
     if(this.context&&this.gain)this.gain.gain.setTargetAtTime(this.volume,this.context.currentTime,.025);
   }
 
+  setLoop(enabled:boolean):void {this.audio.loop=enabled;this.state.loop=enabled;this.notify();}
+
+  seek(seconds:number):void {
+    if(this.state.kind==='tab'||!Number.isFinite(seconds)||!Number.isFinite(this.audio.duration)||this.audio.duration<=0)return;
+    this.audio.currentTime=Math.min(this.audio.duration,Math.max(0,seconds));
+    this.features.reset();this.state.bpm=null;this.updateTimeline();
+  }
+
+  private updateTimeline():void {
+    this.state.duration=this.state.kind!=='tab'&&Number.isFinite(this.audio.duration)?Math.max(0,this.audio.duration):0;
+    this.state.currentTime=this.state.kind!=='tab'&&Number.isFinite(this.audio.currentTime)?Math.max(0,this.audio.currentTime):0;
+  }
+
   sample():Readonly<SignalFrame>{
-    if(!this.analyser||!this.context||this.context.state!=='running'||!this.state.playing){this.features.reset();return empty;}
+    this.updateTimeline();
+    if(!this.analyser||!this.context||this.context.state!=='running'||!this.state.playing){this.features.reset();this.state.bpm=null;return empty;}
     const now=this.context.currentTime,dt=Math.min(.1,Math.max(.001,now-this.lastSample));this.lastSample=now;
     this.analyser.getByteTimeDomainData(this.wave);this.analyser.getByteFrequencyData(this.frequency);
     const signal=this.features.measure(this.wave,this.frequency,this.context.sampleRate,this.analyser.fftSize,dt,now);
+    this.state.bpm=signal.bpm??null;
     if(this.state.kind==='tab'){
       if(signal.energy>.005){
         this.silentSince=null;
@@ -202,8 +227,10 @@ export class MusicPlayer implements SignalSource {
   }
 
   dispose():void{
+    if(this.disposed)return;
     this.cancelCapture?.();
-    this.disposed=true;++this.operation;this.audio.pause();this.releaseStream();
+    this.disposed=true;++this.operation;this.events.abort();this.audio.pause();this.releaseStream();
+    this.features.reset();Object.assign(this.state,{playing:false,busy:false,bpm:null});
     this.audio.removeAttribute('src');this.audio.load();
     if(this.objectUrl)URL.revokeObjectURL(this.objectUrl);
     this.mediaSource?.disconnect();this.analyser?.disconnect();this.analysisSink?.disconnect();this.gain?.disconnect();

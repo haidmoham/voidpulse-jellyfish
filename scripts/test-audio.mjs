@@ -9,15 +9,48 @@ const {MusicPlayer}=await import(moduleUrl(readFileSync(new URL('../src/audio/Mu
 
 const wave=new Uint8Array(2048).fill(128),frequency=new Uint8Array(1024);
 const features=new AudioFeatures();
-assert.deepEqual(features.measure(wave,frequency,48000,2048,1/60,1),{energy:0,bass:0,treble:0,onset:0});
+const silence=features.measure(wave,frequency,48000,2048,1/60,1);
+for(const key of ['energy','bass','mids','treble','onset'])assert.equal(silence[key],0);
+assert.equal(silence.bpm,null,'silence has no invented tempo');
+assert.equal(silence.spectrum.length,64);assert.equal(silence.waveform.length,128);
+assert.ok(silence.spectrum.every(value=>value===0)&&silence.waveform.every(value=>value===0));
 for(let i=0;i<wave.length;i++)wave[i]=128+Math.round(Math.sin(i*.02)*45);
 frequency.fill(220,2,10);
 let result;
 for(let i=0;i<60;i++)result=features.measure(wave,frequency,48000,2048,1/60,2+i/60);
 assert.ok(result.bass>.6&&result.treble<.001,'bass remains distinct from treble');
+assert.ok(result.spectrum.some(value=>value>.5),'measured spectrum contains bass energy');
+assert.ok(result.waveform.some(value=>value<0)&&result.waveform.some(value=>value>0),'waveform preserves signed samples');
+assert.equal(result.bpm,null,'a sustained tone does not invent a beat');
 frequency.fill(0);wave.fill(128);
 for(let i=0;i<300;i++)result=features.measure(wave,frequency,48000,2048,1/60,3+i/60);
 assert.ok(result.energy<.00001&&result.bass<.00001,'silence returns the visual to rest');
+features.reset();frequency.fill(210,20,60);
+for(let i=0;i<wave.length;i++)wave[i]=128+Math.round(Math.sin(i*.2)*45);
+for(let i=0;i<60;i++)result=features.measure(wave,frequency,48000,2048,1/60,10+i/60);
+assert.ok(result.mids>.4&&result.bass<.001&&result.treble<.001,'mids respond independently');
+
+features.reset();
+for(let tick=0;tick<480;tick++){
+  const beat=tick%30<3;
+  for(let i=0;i<wave.length;i++)wave[i]=beat?128+Math.round(Math.sin(i*.02)*70):128;
+  frequency.fill(beat?220:0);
+  result=features.measure(wave,frequency,48000,2048,1/60,tick/60);
+  if(tick<150)assert.equal(result.bpm,null,'tempo waits for five complete onset intervals');
+}
+assert.ok(Math.abs(result.bpm-120)<=1&&result.beatConfidence>.9,'regular measured pulses establish a tempo');
+wave.fill(128);frequency.fill(0);
+for(let tick=480;tick<800;tick++)result=features.measure(wave,frequency,48000,2048,1/60,tick/60);
+assert.equal(result.bpm,null,'tempo clears after prolonged silence');
+features.reset();
+let irregularTime=20;
+for(const interval of [.31,.82,.49,1.23,.61,.38,.97,.72]){
+  wave.fill(128);frequency.fill(0);features.measure(wave,frequency,48000,2048,1/60,irregularTime+.1);
+  irregularTime+=interval;
+  for(let i=0;i<wave.length;i++)wave[i]=128+Math.round(Math.sin(i*.02)*70);
+  frequency.fill(220);result=features.measure(wave,frequency,48000,2048,1/60,irregularTime);
+}
+assert.equal(result.bpm,null,'irregular onsets do not produce a confident tempo');
 
 class FakeNode {connections=[];connect(node){this.connections.push(node);} disconnect(){this.connections=[];} gain={value:0,setTargetAtTime(){}};}
 class FakeAudio extends EventTarget {
@@ -42,6 +75,12 @@ const stream=(hasAudio=true)=>{
 };
 const audio=new FakeAudio(),player=new MusicPlayer(audio,()=>{});
 await player.toggle();assert.equal(player.state.playing,true);assert.equal(audio.paused,false);
+player.setLoop(false);assert.equal(audio.loop,false);assert.equal(player.state.loop,false);
+player.seek(400);assert.equal(audio.currentTime,120,'seek clamps to duration');
+player.seek(-5);assert.equal(audio.currentTime,0);
+player.setVolume(.8);assert.equal(player.state.volume,.8);
+player.setVolume(NaN);assert.equal(player.state.volume,.8,'invalid volume cannot enter the audio graph');
+player.sample();assert.equal(player.state.duration,120);
 await player.toggle();assert.equal(player.state.playing,false);assert.equal(audio.paused,true);
 const file=new File(['fixture'],'song.mp3',{type:'audio/mpeg'});
 await player.choose(file);assert.equal(player.state.kind,'file');assert.equal(player.state.playing,true);
@@ -57,6 +96,8 @@ const noAudioRequest=player.shareTab(),noAudio=stream(false);captured(noAudio);a
 assert.ok(noAudio.tracks.every(t=>t.stopped));assert.equal(player.state.kind,'included');assert.ok(player.state.message.includes('no sound'));
 const goodRequest=player.shareTab(),good=stream();captured(good);await goodRequest;
 assert.equal(player.state.kind,'tab');assert.equal(audio.paused,true,'local playback stops when tab capture connects');
+player.seek(40);assert.equal(audio.currentTime,0,'captured tab audio has no local seek control');
+assert.equal(player.state.duration,0);
 assert.ok(player.streamSource.connections.includes(player.analyser),'capture feeds the analyser');
 assert.ok(player.analyser.connections.includes(player.analysisSink),'analysis remains in the rendered graph');
 assert.equal(player.analysisSink.gain.value,0,'captured audio cannot echo');
@@ -73,4 +114,6 @@ assert.equal(player.state.busy,false,'pending capture can be canceled');
 captured(canceledStream);await Promise.resolve();await Promise.resolve();
 assert.ok(canceledStream.tracks.every(t=>t.stopped),'capture arriving after cancel is released');
 player.dispose();assert.equal(audio.paused,true);
-console.log('Audio checks passed: measured bands, silence, playback/recovery, source switching, capture races, and track cleanup.');
+assert.equal(player.state.playing,false,'disposal clears the transport state');
+player.dispose();await player.toggle();assert.equal(audio.paused,true,'disposed players cannot resume');
+console.log('Audio checks passed: measured features, uncertain tempo, playback, source cleanup, and no invented beats.');
