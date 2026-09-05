@@ -165,6 +165,12 @@ contractions. Its spring preserves position and velocity when a new beat
 arrives. A delayed response drives the reaching tentacles. Bass does not
 repeatedly trigger an attack while it remains constant. The motion checks
 cover silence, bounded displacement, delayed reach, and frame-rate consistency.
+The bell closes more deeply on attacks. The arms recoil, then reach forward
+and sweep sideways with a broad traveling bend. The existing intensity control
+increases this displacement through the bounded force uniform. Attack timing
+and material brightness stay unchanged. These deformation formulas are GLSL
+strings in TypeScript. Three.js compiles them for the GPU at runtime; the
+TypeScript build cannot check the shader formulas.
 Adaptive detail rechecks slow frames throughout the session. High detail
 keeps the higher pixel-density cap.
 
