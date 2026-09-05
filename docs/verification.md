@@ -59,6 +59,10 @@ The opaque renderer retains its drawing buffer between presentations.
 This is a plausible mechanism for the reported failure, not a reproduced
 failure on the user's specific graphics hardware.
 
+After PR #4 landed, the user confirmed on 2026-09-05: “flicker solved”.
+This confirms that the reported flicker is resolved on the user's setup.
+It does not isolate which rendering repair removed the failure.
+
 The actual GPU harness passed 40 camera/input poses and 160 floating-point
 readbacks, including repeated inputs, raw scene pixels, and bloom/output
 pixels. It reported zero non-finite values, blank frames, unstable repeats,
