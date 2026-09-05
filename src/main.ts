@@ -1,31 +1,47 @@
-import { VoidpulseApp } from "./app/VoidpulseApp";
-import "./style.css";
+import { VoidpulseApp } from './app/VoidpulseApp';
+import './style.css';
 
-const root = document.querySelector<HTMLElement>("#app");
-
-if (!root) {
-  throw new Error("Missing #app mount element.");
-}
-
-const showStartupError = (error: unknown): void => {
-  const message =
-    error instanceof Error ? error.message : "Voidpulse could not start.";
-  console.error(error);
-  root.replaceChildren();
-  const fallback = document.createElement("p");
-  fallback.textContent = message;
-  fallback.setAttribute("role", "alert");
-  root.append(fallback);
+const root=document.querySelector<HTMLElement>('#app');
+if(!root)throw new Error('Missing #app mount element.');
+const status=document.querySelector<HTMLElement>('#status');
+const showError=(message:string)=>{
+  document.querySelector('.loading')?.remove();
+  if(status){status.textContent=message;status.classList.add('has-error');}
 };
-
-const webGpuNavigator = navigator as Navigator & { gpu?: unknown };
-
-if (!webGpuNavigator.gpu) {
-  showStartupError(
-    new Error(
-      "WebGPU is required for the Aurelia visual. Use a current browser with WebGPU enabled.",
-    ),
-  );
-} else {
-  VoidpulseApp.create(root).then((app) => app.start()).catch(showStartupError);
-}
+VoidpulseApp.create(root).then(app=>{
+  app.start();
+  const motion=document.querySelector<HTMLButtonElement>('#motion')!;
+  const syncMotion=()=>{
+    const running=app.isRunning;
+    root.classList.toggle('is-moving',running);
+    motion.setAttribute('aria-pressed',String(!running));
+    motion.setAttribute('aria-label',running?'pause motion':'resume motion');
+    motion.title=running?'pause motion':'resume motion';
+    motion.innerHTML=running?'<span class="pause-mark" aria-hidden="true"></span>':'<span class="play-mark" aria-hidden="true"></span>';
+  };
+  motion.addEventListener('click',()=>{app.toggleMotion();syncMotion();});
+  root.addEventListener('motion-change',syncMotion);
+  syncMotion();
+  document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach(button=>{
+    button.addEventListener('click',()=>{
+      app.setView(button.dataset.view!);
+      document.querySelectorAll('[data-view]').forEach(other=>other.setAttribute('aria-pressed',String(other===button)));
+    });
+  });
+  document.querySelector('#pulse')?.addEventListener('click',app.pulse);
+  const fullscreen=document.querySelector<HTMLButtonElement>('#fullscreen')!;
+  if(!document.fullscreenEnabled)fullscreen.hidden=true;
+  fullscreen.addEventListener('click',async()=>{
+    try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}
+    catch{showError('fullscreen is unavailable in this browser.');}
+  });
+  document.addEventListener('fullscreenchange',()=>{
+    fullscreen.setAttribute('aria-label',document.fullscreenElement?'exit fullscreen':'enter fullscreen');
+    fullscreen.setAttribute('aria-pressed',String(Boolean(document.fullscreenElement)));
+  });
+  root.addEventListener('visual-error',event=>showError((event as CustomEvent<string>).detail));
+  window.addEventListener('pagehide',event=>{if(!event.persisted)app.dispose();});
+}).catch(error=>{
+  console.error(error);
+  showError('this universe needs WebGL 2. enable hardware acceleration, then reload.');
+});

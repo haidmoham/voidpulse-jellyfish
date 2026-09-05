@@ -1,165 +1,204 @@
-import * as THREE from "three";
-import type { AureliaScene } from "../vendor/aurelia/AureliaScene.js";
-import { OrbitCameraController } from "./OrbitCameraController";
-
-const MAX_DELTA_SECONDS = 1 / 20;
-const DESKTOP_MAX_PIXEL_RATIO = 2;
-const MOBILE_MAX_PIXEL_RATIO = 1.25;
-const CAMERA_DRIFT = 0.35;
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { Organism } from '../visual/Organism';
+import { Singularity } from '../visual/Singularity';
+import { Cosmos } from '../visual/Cosmos';
+import { normalizeSignal, silentSource } from '../core/Signal';
+import type { SignalSource } from '../core/Signal';
 
 export class VoidpulseApp {
-  private visual!: AureliaScene;
-  private readonly grid = new THREE.GridHelper(12, 24, 0x456f9b, 0x18304f);
-  private readonly clock = new THREE.Clock();
-  private readonly reducedMotionQuery = window.matchMedia(
-    "(prefers-reduced-motion: reduce)",
-  );
+  private readonly scene = new THREE.Scene();
+  private readonly camera = new THREE.PerspectiveCamera(42,1,.1,160);
+  private readonly renderer = new THREE.WebGLRenderer({antialias:false,alpha:true,powerPreference:'high-performance'});
+  private readonly composer:EffectComposer;
+  private readonly bloom:UnrealBloomPass;
+  private readonly lens:ShaderPass;
+  private readonly controls:OrbitControls;
+  private readonly organism=new Organism();
+  private readonly singularity=new Singularity();
+  private readonly cosmos=new Cosmos();
+  private readonly motionQuery=matchMedia('(prefers-reduced-motion: reduce)');
+  private source:SignalSource=silentSource;
+  private time=0;
+  private last=0;
+  private frameId=0;
+  private disposed=false;
+  private running=!this.motionQuery.matches;
+  private automatic=true;
+  private view='encounter';
+  private impulse=0;
+  private energy=0;
+  private frames=0;
+  private slowFrames=0;
+  private quality=1;
+  private mobile=innerWidth<700;
+  private readonly center=new THREE.Vector3();
+  private readonly rim=new THREE.Vector3();
+  private readonly right=new THREE.Vector3();
 
-  private cameraController: OrbitCameraController | null = null;
-  private reducedMotion = this.reducedMotionQuery.matches;
-  private animationFrame: number | null = null;
-  private loopRunning = false;
-  private disposed = false;
-
-  private constructor(private readonly root: HTMLElement) {}
-
-  static async create(root: HTMLElement): Promise<VoidpulseApp> {
-    const app = new VoidpulseApp(root);
-    await app.initialize();
-    return app;
-  }
-
-  async initialize(): Promise<void> {
-    const { AureliaScene } = await import("../vendor/aurelia/AureliaScene.js");
-    this.visual = new AureliaScene();
-    await this.visual.init();
-
-    this.grid.rotation.x = Math.PI / 2;
-    this.grid.material.transparent = true;
-    this.grid.material.opacity = 0.16;
-    this.grid.material.depthWrite = false;
-    this.visual.scene.add(this.grid);
-
-    this.root.prepend(this.visual.renderer.domElement);
-    this.cameraController = new OrbitCameraController(
-      this.visual.camera,
-      this.visual.renderer.domElement,
-    );
-  }
-
-  start(): void {
-    if (!this.cameraController) {
-      throw new Error("Voidpulse must finish initializing before it starts.");
-    }
-
+  private constructor(private readonly root:HTMLElement){
+    this.renderer.domElement.className='experience-canvas';
+    this.renderer.domElement.setAttribute('aria-label','an orbitable luminous jellyfish surrounding a black hole');
+    this.renderer.domElement.setAttribute('role','img');
+    this.renderer.setClearColor(0x020309,0);
+    this.renderer.outputColorSpace=THREE.SRGBColorSpace;
+    this.renderer.toneMapping=THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure=.9;
+    root.prepend(this.renderer.domElement);
+    this.scene.add(this.organism.group,this.singularity.group,this.cosmos.group);
+    this.controls=new OrbitControls(this.camera,this.renderer.domElement);
+    this.controls.enableDamping=true;
+    this.controls.dampingFactor=.055;
+    this.controls.enablePan=false;
+    this.controls.minDistance=5.2;
+    this.controls.maxDistance=24;
+    this.controls.minPolarAngle=.3;
+    this.controls.maxPolarAngle=2.6;
+    this.controls.rotateSpeed=.45;
+    this.controls.zoomSpeed=.65;
+    this.controls.addEventListener('start',this.onInteract);
+    this.composer=new EffectComposer(this.renderer);
+    this.composer.addPass(new RenderPass(this.scene,this.camera));
+    this.bloom=new UnrealBloomPass(new THREE.Vector2(1,1),.4,.5,.72);
+    this.composer.addPass(this.bloom);
+    this.lens=new ShaderPass({
+      uniforms:{tDiffuse:{value:null},center:{value:new THREE.Vector2(.5,.5)},radius:{value:.1},aspect:{value:1},time:{value:0}},
+      vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+      fragmentShader:`uniform sampler2D tDiffuse;uniform vec2 center;uniform float radius;uniform float aspect;uniform float time;varying vec2 vUv;
+      void main(){
+        vec2 delta=vUv-center;delta.x*=aspect;float d=length(delta);float r=radius;
+        float bend=exp(-max(d-r,0.)/max(r*.45,.001))*.035*r*smoothstep(r*.98,r*1.2,d);
+        vec2 dir=delta/max(d,.001);dir.x/=aspect;
+        vec2 uv=vUv-dir*bend;
+        vec3 color=texture2D(tDiffuse,uv).rgb;
+        float fringe=exp(-abs(d-r*1.06)/max(r*.08,.001))*.0007;
+        color.r=texture2D(tDiffuse,uv+dir*fringe).r;
+        color.b=texture2D(tDiffuse,uv-dir*fringe).b;
+        float vignette=1.-.31*pow(length((vUv-.5)*vec2(1.,.85)),1.4);
+        float grain=fract(sin(dot(gl_FragCoord.xy+mod(time,30.),vec2(12.9898,78.233)))*43758.5453)-.5;
+        float atmosphere=exp(-length(delta*vec2(.85,1.05))*5.5);
+        float cloud=.6+.2*sin(delta.x*23.+sin(delta.y*17.))+.2*sin(delta.y*31.+delta.x*7.);
+        color+=vec3(.0007,.0006,.0022)*atmosphere*cloud;
+        color*=vignette;color+=grain*.00025;
+        color*=smoothstep(r*.96,r*.99,d);
+        gl_FragColor=vec4(max(color,vec3(0.)),1.);
+      }`,
+    });
+    this.composer.addPass(this.lens);
+    this.composer.addPass(new OutputPass());
+    this.setView('encounter');
     this.resize();
-    this.cameraController.connect();
-    window.addEventListener("resize", this.resize, { passive: true });
-    document.addEventListener("visibilitychange", this.handleVisibilityChange);
-    this.reducedMotionQuery.addEventListener(
-      "change",
-      this.handleReducedMotionChange,
-    );
-    window.addEventListener("pagehide", this.handlePageHide);
-    window.addEventListener("pageshow", this.handlePageShow);
-    this.startLoop();
   }
 
-  dispose(): void {
-    if (this.disposed) return;
-    this.disposed = true;
+  static async create(root:HTMLElement):Promise<VoidpulseApp>{return new VoidpulseApp(root);}
 
-    this.stopLoop();
-    window.removeEventListener("resize", this.resize);
-    document.removeEventListener(
-      "visibilitychange",
-      this.handleVisibilityChange,
-    );
-    this.reducedMotionQuery.removeEventListener(
-      "change",
-      this.handleReducedMotionChange,
-    );
-    window.removeEventListener("pagehide", this.handlePageHide);
-    window.removeEventListener("pageshow", this.handlePageShow);
-    this.cameraController?.dispose();
-    this.cameraController = null;
-    this.visual.scene.remove(this.grid);
-    this.grid.geometry.dispose();
-    this.grid.material.dispose();
-    this.visual.dispose();
-    this.visual.renderer.domElement.remove();
+  start():void{
+    window.addEventListener('resize',this.resize,{passive:true});
+    document.addEventListener('visibilitychange',this.visibility);
+    this.motionQuery.addEventListener('change',this.motionChanged);
+    this.renderer.domElement.addEventListener('dblclick',this.pulse);
+    this.renderer.domElement.addEventListener('webglcontextlost',this.contextLost);
+    this.renderer.domElement.addEventListener('webglcontextrestored',this.contextRestored);
+    this.last=performance.now();
+    this.frameId=requestAnimationFrame(this.frame);
   }
 
-  private readonly resize = (): void => {
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-    const isMobileBudget =
-      window.matchMedia("(pointer: coarse)").matches || width < 720;
-    const pixelRatio = Math.min(
-      window.devicePixelRatio || 1,
-      isMobileBudget ? MOBILE_MAX_PIXEL_RATIO : DESKTOP_MAX_PIXEL_RATIO,
-    );
-    this.visual.resize(width, height, pixelRatio);
-  };
+  /** A later audio adapter can replace silence without coupling Web Audio to Three.js. */
+  setSignalSource(source:SignalSource):void{if(this.source!==source)this.source.dispose?.();this.source=source;}
 
-  private readonly frame = async (): Promise<void> => {
-    if (this.disposed || document.hidden || !this.loopRunning) return;
-
-    const dt = Math.min(this.clock.getDelta(), MAX_DELTA_SECONDS);
-    this.cameraController?.update(
-      dt,
-      this.reducedMotion ? 0 : CAMERA_DRIFT,
-    );
-    await this.visual.update(dt, this.clock.getElapsedTime());
-
-    if (this.loopRunning && !this.disposed && !document.hidden) {
-      this.animationFrame = requestAnimationFrame(this.frame);
+  setView(view:string):void{
+    this.view=view;
+    const mobile=innerWidth<700;
+    if(view==='horizon'){
+      this.camera.position.set(.2,1.1,mobile?11.4:7.5);
+      this.controls.target.set(0,.35,0);
+    }else{
+      this.camera.position.set(0,1.0,mobile?18.2:15.2);
+      this.controls.target.set(0,-1.2,0);
     }
-  };
-
-  private startLoop(): void {
-    if (this.disposed || this.loopRunning || document.hidden) return;
-
-    this.loopRunning = true;
-    this.clock.start();
-    this.animationFrame = requestAnimationFrame(this.frame);
+    this.automatic=true;
+    this.controls.update();
   }
 
-  private stopLoop(): void {
-    if (!this.loopRunning) return;
+  get isRunning():boolean{return this.running;}
+  toggleMotion():boolean{this.running=!this.running;return this.running;}
+  pulse=():void=>{if(this.running)this.impulse=1;};
 
-    this.loopRunning = false;
-    this.clock.stop();
-    if (this.animationFrame !== null) {
-      cancelAnimationFrame(this.animationFrame);
-      this.animationFrame = null;
-    }
+  private readonly onInteract=():void=>{this.automatic=false;};
+  private readonly motionChanged=():void=>{
+    this.impulse=0;this.energy=0;this.running=!this.motionQuery.matches;
+    this.root.dispatchEvent(new CustomEvent('motion-change'));
+  };
+  private readonly resize=():void=>{
+    const width=innerWidth,height=innerHeight;
+    if(this.mobile!==(width<700)){this.mobile=width<700;this.setView(this.view);}
+    const ratio=Math.min(devicePixelRatio||1,width<700?1.45:1.7)*this.quality;
+    this.renderer.setPixelRatio(ratio);
+    this.renderer.setSize(width,height,false);
+    this.composer.setPixelRatio(ratio);
+    this.composer.setSize(width,height);
+    this.camera.aspect=width/height;
+    this.camera.setViewOffset(width,height,width<700?0:-width*.075,0,width,height);
+    this.camera.updateProjectionMatrix();
+    this.lens.uniforms.aspect.value=width/height;
+  };
+
+  private readonly visibility=():void=>{
+    cancelAnimationFrame(this.frameId);
+    if(!document.hidden&&!this.disposed){this.last=performance.now();this.frameId=requestAnimationFrame(this.frame);}
+  };
+
+  private readonly frame=(now:number):void=>{
+    if(this.disposed||document.hidden)return;
+    const raw=(now-this.last)/1000,dt=Math.min(raw,.05);this.last=now;
+    const animated=this.running;
+    if(animated)this.time+=dt;
+    this.impulse*=Math.exp(-dt*1.35);
+    const signal=normalizeSignal(this.source.sample(this.time));
+    const targetEnergy=animated?Math.min(1,signal.energy*.5+signal.bass*.25+this.impulse*.8):0;
+    this.energy=THREE.MathUtils.damp(this.energy,targetEnergy,2.2,dt);
+    const energy=this.energy;
+    this.controls.autoRotate=animated&&this.automatic&&this.view==='encounter';
+    this.controls.autoRotateSpeed=.16;
+    this.controls.update(dt);
+    this.organism.update(this.time,energy);
+    this.singularity.update(this.time,energy,this.camera);
+    this.cosmos.update(this.time,this.renderer.getPixelRatio());
+    this.center.set(0,.65,0).project(this.camera);
+    this.right.set(1,0,0).applyQuaternion(this.camera.quaternion).multiplyScalar(.86);
+    this.rim.copy(this.right).add(new THREE.Vector3(0,.65,0)).project(this.camera);
+    this.lens.uniforms.center.value.set(this.center.x*.5+.5,this.center.y*.5+.5);
+    this.lens.uniforms.radius.value=Math.abs(this.rim.x-this.center.x)*.5*this.camera.aspect;
+    this.lens.uniforms.time.value=this.time;
+    this.bloom.strength=.38+energy*.07;
+    this.composer.render();
+    // Reduce pixel cost once when a device sustains slow frames.
+    if(++this.frames<180&&raw>.04)this.slowFrames++;
+    if(this.frames===180&&this.slowFrames>100){this.quality=.7;this.resize();}
+    if(this.frames===2){this.root.classList.add('is-ready');document.querySelector('.loading')?.remove();}
+    this.frameId=requestAnimationFrame(this.frame);
+  };
+
+  private readonly contextLost=(event:Event):void=>{
+    event.preventDefault();cancelAnimationFrame(this.frameId);
+    this.root.dispatchEvent(new CustomEvent('visual-error',{detail:'the visual paused. restoring the connection…'}));
+  };
+  private readonly contextRestored=():void=>{window.location.reload();};
+
+  dispose():void{
+    this.disposed=true;cancelAnimationFrame(this.frameId);
+    window.removeEventListener('resize',this.resize);
+    document.removeEventListener('visibilitychange',this.visibility);
+    this.motionQuery.removeEventListener('change',this.motionChanged);
+    this.controls.dispose();this.organism.dispose();this.singularity.dispose();this.cosmos.dispose();
+    this.source.dispose?.();
+    for(const pass of this.composer.passes)pass.dispose();
+    this.composer.dispose();
+    this.renderer.dispose();this.renderer.domElement.remove();
   }
-
-  private readonly handleVisibilityChange = (): void => {
-    if (document.hidden) {
-      this.stopLoop();
-    } else {
-      this.startLoop();
-    }
-  };
-
-  private readonly handleReducedMotionChange = (
-    event: MediaQueryListEvent,
-  ): void => {
-    this.reducedMotion = event.matches;
-  };
-
-  private readonly handlePageHide = (event: PageTransitionEvent): void => {
-    if (event.persisted) {
-      this.stopLoop();
-    } else {
-      this.dispose();
-    }
-  };
-
-  private readonly handlePageShow = (event: PageTransitionEvent): void => {
-    if (!event.persisted || this.disposed) return;
-    this.startLoop();
-  };
 }

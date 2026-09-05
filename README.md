@@ -1,62 +1,101 @@
-# VoidPulse Jellyfish
+# voidpulse jellyfish
 
-VoidPulse Jellyfish is a real-time Three.js visual built with Vite and
-TypeScript.
+An interactive jellyfish that contains a black hole. An original Three.js
+WebGL 2 renderer combines a luminous mantle, trailing filaments, a folded
+accretion disk, and an artistic gravitational-lensing effect.
 
-The primary jellyfish and blue procedural seascape are adapted from
-[Aurelia](https://github.com/holtsetio/aurelia) by Holtsetio under the MIT
-License. See [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md) for attribution
-and the complete license notice.
+The scene takes direction from the earlier VoidPulse Jellyfish artwork,
+*Interstellar*, and reusable design units from `design-vocabulary`.
+See [art direction](docs/art-direction.md) for references and design decisions.
+The lensing effect is an artistic approximation, not a physics simulation.
 
-The biological black-hole treatment takes visual inspiration from VoXelo's
-[Three.js Black Hole with Shaders](https://codepen.io/VoXelo/full/wBKvJxd),
-especially its central void, lensing rim, and flowing accretion structure. The
-effect is reinterpreted here with original, subdued WebGPU geometry and motion.
+## Local development
 
-## Setup
+Use Node.js 20.19+ on the 20.x line, or Node.js 22.12+.
 
 ```sh
-npm install
-```
-
-## Run locally
-
-```sh
+npm ci
 npm run dev
 ```
 
-Then open the local URL printed by Vite. The production preview can be run with
-`npm run preview` after building.
+Open the local URL printed by Vite. Use a browser with WebGL 2 and hardware
+acceleration enabled.
 
-Drag the scene to orbit the jellyfish. Use the mouse wheel or a two-finger
-pinch to zoom. The spherical orbit model is adapted from
-[`haidmoham/fourier-drawing`](https://github.com/haidmoham/fourier-drawing).
+## Controls
 
-## Build
+- Select **encounter** for the full organism view.
+- Select **event horizon** to approach the nucleus.
+- Drag to orbit. Scroll or pinch to zoom.
+- Use the pause button to stop automatic motion. Press it again to resume.
+- Select **excite**, or double-click the canvas, to send a temporary pulse.
+- Use the fullscreen button to enter or leave fullscreen where supported.
+
+Manual orbit stops automatic camera rotation. Selecting a view restores it.
+The operating system's reduced-motion preference starts the artwork static and
+hides excitation. Manual camera controls remain available. The play button can
+explicitly enable animation. A later system preference change restores that preference.
+
+## Build and preview
 
 ```sh
 npm run build
+npm run preview
 ```
 
-The build runs the TypeScript project check and writes the Vite bundle to
-`dist/`.
+The build checks TypeScript and writes the production bundle to `dist/`.
+The preview command serves that bundle locally.
 
-## Architecture
+## Deploy
 
-- `src/main.ts` mounts and starts the application.
-- `src/app/VoidpulseApp.ts` owns the asynchronous WebGPU visual lifecycle,
-  frame loop, resize handling, comfort settings, and cleanup.
-- `src/app/OrbitCameraController.ts` handles pointer orbit and wheel or pinch
-  zoom around the jellyfish.
-- `src/vendor/aurelia/AureliaScene.js` assembles the single vendored Medusa,
-  blue procedural environment, GPU Verlet simulation, and TSL bloom pipeline.
-- `src/vendor/aurelia/` contains the adapted Aurelia source boundary. Its
-  licensing and provenance are recorded in `THIRD_PARTY_NOTICES.md`.
-- `src/style.css` provides the full-viewport canvas and intentionally quiet
-  overlay typography. With reduced motion enabled, the scene continues its
-  slow animation while automatic camera drift is disabled.
+Cloudflare Workers serves `dist/` as static assets. The repository's
+`wrangler.jsonc` assigns both requested custom domains:
 
-Compact and coarse-pointer devices use a reduced pixel-density ceiling, fewer
-Verlet substeps, and a smaller celestial particle field. The animation pauses
-while the page is suspended and resumes without accumulating a large frame
-delta.
+- [jellyfish.shin86.dev](https://jellyfish.shin86.dev)
+- [jellyfish.mhaider.dev](https://jellyfish.mhaider.dev)
+
+Use an authenticated Cloudflare account with access to both zones. Build the
+site, check the deployment configuration, then deploy:
+
+```sh
+npm run build
+npx wrangler@4.127.1 deploy --config wrangler.jsonc --dry-run
+npx wrangler@4.127.1 deploy --config wrangler.jsonc
+```
+
+Cloudflare manages DNS and certificates through Worker custom domains.
+These commands document deployment setup. They do not certify a live release.
+
+## Architecture and future music input
+
+- `src/main.ts` connects browser controls to the application.
+- `src/app/VoidpulseApp.ts` owns the Three.js renderer, camera, frame loop,
+  post-processing, resize handling, motion preferences, and cleanup.
+- `src/visual/Organism.ts`, `Singularity.ts`, and `Cosmos.ts` build the organism,
+  black-hole treatment, and surrounding space.
+- `src/core/Signal.ts` defines the future music-input boundary.
+- `src/style.css` places the DOM interface over the canvas.
+
+`SignalSource` supplies normalized energy, bass, treble, and onset values.
+A later Web Audio adapter can connect through `setSignalSource()`.
+The default source supplies silence. The current renderer uses energy and bass
+for visual intensity. Treble and onset remain available for later mappings.
+No music playback or microphone access is included.
+
+`SignalSource`, `SignalFrame`, and `Readonly` exist only during TypeScript
+checking. They are erased from the JavaScript build. The source object's
+`sample()` method and the normalization function run in the browser.
+Normalization clamps finite inputs to zero through one and replaces invalid
+values with zero. The frame loop sends the resulting intensity to scene
+updates. Three.js passes runtime uniform values to the GPU, where GLSL shaders
+produce the visual response.
+
+The scene caps pixel density and can reduce resolution after sustained slow
+frames. It pauses rendering while the document is hidden.
+
+## Prior art and licenses
+
+The earlier Aurelia adaptation remains in `src/vendor/aurelia/` as unused prior
+art. The active renderer does not import it. Its copyright headers and MIT
+license remain in [third-party notices](THIRD_PARTY_NOTICES.md).
+See [art direction](docs/art-direction.md) for the original Aurelia and VoXelo
+references, the *Interstellar* rendering paper, and design-vocabulary provenance.

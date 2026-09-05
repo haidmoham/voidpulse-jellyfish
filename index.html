@@ -3,22 +3,42 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#05060a" />
-    <meta
-      name="description"
-      content="A quiet, real-time celestial jellyfish study."
-    />
-    <title>VoidPulse Jellyfish</title>
+    <meta name="theme-color" content="#03040b" />
+    <meta name="description" content="A jellyfish. A black hole. An impossible living universe. Enter voidpulse, an interactive cosmic artwork." />
+    <meta property="og:title" content="voidpulse — the abyss is alive" />
+    <meta property="og:description" content="An impossible organism at the edge of light." />
+    <title>voidpulse — the abyss is alive</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   </head>
   <body>
-    <main id="app" aria-label="VoidPulse Jellyfish visualizer">
-      <div class="experience-note" aria-live="polite">
-        <span class="experience-title">VoidPulse</span>
-        <span class="experience-caption">celestial jellyfish study</span>
-      </div>
-      <p class="comfort-note">
-        Motion follows your system comfort settings.
-      </p>
+    <main id="app" aria-label="voidpulse interactive cosmic artwork">
+      <header class="masthead">
+        <a class="wordmark" href="/" aria-label="voidpulse home"><span class="sigil" aria-hidden="true">◉</span>voidpulse<span class="edition">/ 002</span></a>
+        <div class="classification"><span class="status-dot"></span> an impossible organism</div>
+      </header>
+      <div class="side-coordinate" aria-hidden="true">between the deep sea & deep space</div>
+      <section class="title-block" aria-label="about this artwork">
+        <p class="eyebrow"><span></span> abyssal singularity</p>
+        <h1>the abyss<br>is <em>alive.</em></h1>
+        <p class="description">a soft body. an infinite gravity.<br>something beautiful that should not exist.</p>
+      </section>
+      <div class="specimen-note" aria-hidden="true"><span class="crosshair">+</span><span>gravitational organism<br><span class="dim">specimen no. 001 · unclassified</span></span></div>
+      <div class="loading" role="status"><span></span> entering the deep</div>
+      <p id="status" role="status" aria-live="polite"></p>
+      <footer class="experience-footer">
+        <p class="gesture-note">drag to orbit <span>·</span> scroll to approach</p>
+        <nav class="view-controls" aria-label="observer position">
+          <button data-view="encounter" aria-pressed="true">encounter</button>
+          <button data-view="horizon" aria-pressed="false">event horizon</button>
+        </nav>
+        <div class="utility-controls">
+          <button id="pulse" class="pulse-button" aria-label="send a pulse through the organism" title="send a pulse">excite <span aria-hidden="true">↗</span></button>
+          <span class="control-divider"></span>
+          <button id="motion" class="icon-button" aria-label="pause motion" aria-pressed="false" title="pause motion"><span class="pause-mark" aria-hidden="true"></span></button>
+          <button id="fullscreen" class="icon-button" aria-label="enter fullscreen" aria-pressed="false" title="fullscreen"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><path d="M7 3H3v4m10-4h4v4M3 13v4h4m10-4v4h-4"/></svg></button>
+        </div>
+      </footer>
+      <noscript><p class="noscript">enable JavaScript to enter this universe.</p></noscript>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>
