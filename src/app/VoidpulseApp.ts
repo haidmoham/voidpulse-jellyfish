@@ -33,6 +33,10 @@ export class VoidpulseApp {
   private view='encounter';
   private impulse=0;
   private energy=0;
+  private treble=0;
+  private onset=0;
+  private intensity=1.6;
+  private force=0;
   private frames=0;
   private slowFrames=0;
   private quality=1;
@@ -108,7 +112,7 @@ export class VoidpulseApp {
     this.frameId=requestAnimationFrame(this.frame);
   }
 
-  /** A later audio adapter can replace silence without coupling Web Audio to Three.js. */
+  /** Audio supplies measurements without owning the scene or animation clock. */
   setSignalSource(source:SignalSource):void{if(this.source!==source)this.source.dispose?.();this.source=source;}
 
   setView(view:string):void{
@@ -126,12 +130,13 @@ export class VoidpulseApp {
   }
 
   get isRunning():boolean{return this.running;}
+  setIntensity(value:number):void{this.intensity=Number.isFinite(value)?THREE.MathUtils.clamp(value,0,3):1.6;}
   toggleMotion():boolean{this.running=!this.running;return this.running;}
   pulse=():void=>{if(this.running)this.impulse=1;};
 
   private readonly onInteract=():void=>{this.automatic=false;};
   private readonly motionChanged=():void=>{
-    this.impulse=0;this.energy=0;this.running=!this.motionQuery.matches;
+    this.impulse=0;this.energy=0;this.treble=0;this.onset=0;this.running=!this.motionQuery.matches;
     this.root.dispatchEvent(new CustomEvent('motion-change'));
   };
   private readonly resize=():void=>{
@@ -157,17 +162,22 @@ export class VoidpulseApp {
     if(this.disposed||document.hidden)return;
     const raw=(now-this.last)/1000,dt=Math.min(raw,.05);this.last=now;
     const animated=this.running;
-    if(animated)this.time+=dt;
     this.impulse*=Math.exp(-dt*1.35);
     const signal=normalizeSignal(this.source.sample(this.time));
-    const targetEnergy=animated?Math.min(1,signal.energy*.5+signal.bass*.25+this.impulse*.8):0;
-    this.energy=THREE.MathUtils.damp(this.energy,targetEnergy,2.2,dt);
+    if(animated)this.time+=dt*(1+signal.energy*this.intensity*.75);
+    const lightIntensity=Math.min(1,this.intensity);
+    const targetEnergy=animated?Math.min(1,(signal.energy*.75+signal.bass*.45+this.impulse*.8)*lightIntensity):0;
+    this.energy=THREE.MathUtils.damp(this.energy,targetEnergy,6,dt);
+    this.treble=THREE.MathUtils.damp(this.treble,animated?signal.treble*lightIntensity:0,5,dt);
+    this.onset=THREE.MathUtils.damp(this.onset,animated?signal.onset*lightIntensity:0,5,dt);
+    const targetForce=animated?Math.min(3,(signal.energy*.8+signal.bass*.6+signal.onset*.9+this.impulse)*this.intensity):0;
+    this.force=THREE.MathUtils.damp(this.force,targetForce,targetForce>this.force?8:3.5,dt);
     const energy=this.energy;
     this.controls.autoRotate=animated&&this.automatic&&this.view==='encounter';
     this.controls.autoRotateSpeed=.16;
     this.controls.update(dt);
-    this.organism.update(this.time,energy);
-    this.singularity.update(this.time,energy,this.camera);
+    this.organism.update(this.time,energy,this.treble,this.onset,this.force);
+    this.singularity.update(this.time,energy,this.camera,this.treble,this.force);
     this.cosmos.update(this.time,this.renderer.getPixelRatio());
     this.center.set(0,.65,0).project(this.camera);
     this.right.set(1,0,0).applyQuaternion(this.camera.quaternion).multiplyScalar(.86);
@@ -176,6 +186,9 @@ export class VoidpulseApp {
     this.lens.uniforms.radius.value=Math.abs(this.rim.x-this.center.x)*.5*this.camera.aspect;
     this.lens.uniforms.time.value=this.time;
     this.bloom.strength=.38+energy*.07;
+    this.root.style.setProperty('--music-energy',signal.energy.toFixed(3));
+    this.root.style.setProperty('--music-bass',signal.bass.toFixed(3));
+    this.root.style.setProperty('--music-treble',signal.treble.toFixed(3));
     this.composer.render();
     // Reduce pixel cost once when a device sustains slow frames.
     if(++this.frames<180&&raw>.04)this.slowFrames++;

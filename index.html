@@ -21,6 +21,29 @@
         <p class="eyebrow"><span></span> abyssal singularity</p>
         <h1>the abyss<br>is <em>alive.</em></h1>
         <p class="description">a soft body. an infinite gravity.<br>something beautiful that should not exist.</p>
+        <section class="music-panel" id="music-panel" aria-label="music player">
+          <p class="music-invitation">give the deep a soundtrack.</p>
+          <button id="music-play" class="music-play" aria-pressed="false">play music</button>
+          <div class="music-track-row"><span class="music-meter" aria-hidden="true"><i></i><i></i><i></i></span><p class="music-track" id="music-title">night owl · broke for free</p></div>
+          <p class="music-credit" id="music-credit"><a href="https://brokeforfree.bandcamp.com/track/night-owl" target="_blank" rel="noopener noreferrer">artist & track ↗</a><span> · </span><a href="/music-credits.html" target="_blank" rel="noopener noreferrer">music credit</a></p>
+          <div class="music-timeline"><input id="music-seek" type="range" min="0" max="1" value="0" step="0.1" aria-label="song position" disabled><span id="music-time">0:00 / 0:00</span></div>
+          <label class="music-volume">volume<input id="music-volume" type="range" min="0" max="100" value="55" aria-label="music volume"></label>
+          <label class="music-intensity">intensity<input id="music-intensity" type="range" min="0" max="300" value="160" step="5" aria-label="visual intensity"><output id="intensity-value" for="music-intensity">160%</output></label>
+          <p id="music-tab-note" class="music-tab-note" hidden>pause or change volume in your music tab.</p>
+          <p id="music-message" class="music-message" role="status" aria-live="polite" hidden></p>
+          <details id="music-options" class="music-options">
+            <summary>choose your music</summary>
+            <div class="music-options-body">
+              <button id="music-choose">choose a song from this device</button>
+              <p>mp3, m4a, wav and more. your file stays here.</p>
+              <button id="music-tab">YouTube / other tab</button>
+              <p>on a computer, play music in another Chrome or Edge tab. choose that tab and turn on “share tab audio”.</p>
+              <button id="music-demo" hidden>back to the demo</button>
+            </div>
+          </details>
+          <input type="file" id="music-file" accept="audio/*,.mp3,.m4a,.wav,.ogg,.flac,.aac,.opus" hidden>
+          <audio id="music-audio" preload="none" loop></audio>
+        </section>
       </section>
       <div class="specimen-note" aria-hidden="true"><span class="crosshair">+</span><span>gravitational organism<br><span class="dim">specimen no. 001 · unclassified</span></span></div>
       <div class="loading" role="status"><span></span> entering the deep</div>

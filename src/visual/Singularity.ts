@@ -13,10 +13,14 @@ export class Singularity {
 
   constructor() {
     this.group.position.y = 0.65;
-    this.disk = new THREE.Mesh(new THREE.PlaneGeometry(9,9),new THREE.ShaderMaterial({
-      vertexShader: vertex, transparent:true, depthWrite:false, side:THREE.DoubleSide,
+    // Interior vertices let the shader bend the disk between its edges.
+    this.disk = new THREE.Mesh(new THREE.PlaneGeometry(9,9,64,64),new THREE.ShaderMaterial({
+      vertexShader: `varying vec2 vUv;uniform float force;uniform float time;
+      void main(){vUv=uv;vec3 p=position;float radial=length(p.xy);float outer=smoothstep(.8,3.8,radial);
+      p.xy*=1.+force*.085*outer;p.z+=sin(radial*4.-time*.5)*force*.06*outer;
+      gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);}`, transparent:true, depthWrite:false, side:THREE.DoubleSide,
       blending:THREE.AdditiveBlending,
-      uniforms:{time:{value:0},energy:{value:0}},
+      uniforms:{time:{value:0},energy:{value:0},force:{value:0}},
       fragmentShader:`
       varying vec2 vUv; uniform float time; uniform float energy;
       float hash(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
@@ -30,7 +34,7 @@ export class Singularity {
         float cloud=noise(vec2(r*7.+cos(orbit*4.)*2.,sin(orbit*4.)*3.));
         float spiral=pow(.5+.5*sin(r*24.-orbit*7.+n*2.),5.);
         float doppler=.42+1.05*pow(.5+.5*cos(a-.6),2.);
-        float density=inner*outer*(.15+threads*.55+cloud*.36+spiral*.3)*doppler*(1.+energy*.15);
+        float density=inner*outer*(.15+threads*.55+cloud*.36+spiral*.3)*doppler*(1.+energy*.65);
         vec3 col=mix(vec3(1.,.20,.045),vec3(1.,.69,.31),exp(-max(r-1.,0.)*.95));
         col=mix(col,vec3(1.,.91,.72),threads*.2);
         float blueShift=pow(.5+.5*cos(a-.6),12.)*exp(-max(r-1.,0.)*1.8);
@@ -47,8 +51,8 @@ export class Singularity {
 
     this.corona = new THREE.Mesh(new THREE.PlaneGeometry(4.7,4.7),new THREE.ShaderMaterial({
       vertexShader:vertex, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending,
-      uniforms:{time:{value:0}},
-      fragmentShader:`varying vec2 vUv; uniform float time;
+      uniforms:{time:{value:0},energy:{value:0},treble:{value:0}},
+      fragmentShader:`varying vec2 vUv; uniform float time; uniform float energy; uniform float treble;
       void main(){vec2 p=(vUv-.5)*4.7;float r=length(p),a=atan(p.y,p.x);
       float rim=exp(-abs(r-.88)*100.); float glow=exp(-abs(r-.9)*14.)*.35;
       float fine=exp(-abs(r-.936)*170.)*.25;
@@ -57,7 +61,7 @@ export class Singularity {
       c=mix(c,vec3(.18,.8,2.),pow(.5+.5*cos(a-2.4),14.)*.9);
       float mask=smoothstep(.86,.88,r);
       float outer=exp(-abs(r-1.02)*60.);
-      gl_FragColor=vec4((c*(rim*2.4+glow+fine)*d+vec3(.35,.06,.8)*outer*.3)*mask,1.);}`,
+      gl_FragColor=vec4((c*(rim*2.4+glow*(1.+energy*.65)+fine)*d+vec3(.35,.06,.8)*outer*(.3+treble*.5))*mask,1.);}`,
     }));
     this.group.add(this.corona);
     // A stylized secondary image of the disk wraps over the shadow.
@@ -80,10 +84,13 @@ export class Singularity {
     this.group.add(this.arcs);
   }
 
-  update(time:number, energy:number, camera:THREE.Camera):void {
+  update(time:number, energy:number, camera:THREE.Camera,treble=0,force=0):void {
     this.disk.material.uniforms.time.value=time;
     this.disk.material.uniforms.energy.value=energy;
+    this.disk.material.uniforms.force.value=force;
     this.corona.material.uniforms.time.value=time;
+    this.corona.material.uniforms.energy.value=energy;
+    this.corona.material.uniforms.treble.value=treble;
     this.arcs.material.uniforms.time.value=time;
     this.corona.quaternion.copy(camera.quaternion);
     this.arcs.quaternion.copy(camera.quaternion);

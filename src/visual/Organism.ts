@@ -3,7 +3,7 @@ import * as THREE from 'three';
 // The organism owns GPU resources. Audio can drive energy without owning its clock.
 export class Organism {
   readonly group = new THREE.Group();
-  private readonly uniforms = { uTime: { value: 0 }, uEnergy: { value: 0 } };
+  private readonly uniforms = { uTime: { value: 0 }, uEnergy: { value: 0 }, uTreble:{value:0}, uOnset:{value:0}, uForce:{value:0} };
   private readonly resources: (THREE.BufferGeometry | THREE.Material)[] = [];
   private seed = 61231;
 
@@ -30,22 +30,22 @@ export class Organism {
 
   private createBell(): void {
     const vertex = `
-      uniform float uTime; uniform float uEnergy;
+      uniform float uTime; uniform float uEnergy; uniform float uForce;
       varying vec2 vUv; varying vec3 vNormal; varying vec3 vView;
       void main() {
         vUv = uv;
         vec3 p = position;
         float skirt = pow(uv.y, 3.0);
         float pulse = sin(uTime * .62 - uv.y * 4.0);
-        p.xz *= 1.0 + .025 * pulse * uv.y + uEnergy * .022;
-        p.y += skirt * .075 * sin(uv.x * 75.398 + uTime * .75);
+        p.xz *= 1.0 + .025 * pulse * uv.y + uEnergy * .025 + uForce*.045*uv.y;
+        p.y += skirt * (.075+uForce*.085) * sin(uv.x * 75.398 + uTime * .75);
         vec4 mv = modelViewMatrix * vec4(p, 1.0);
         vNormal = normalize(normalMatrix * normal);
         vView = normalize(-mv.xyz);
         gl_Position = projectionMatrix * mv;
       }`;
     const fragment = `
-      uniform float uTime; uniform float uEnergy; uniform float uLayer;
+      uniform float uTime; uniform float uEnergy; uniform float uLayer; uniform float uTreble;
       varying vec2 vUv; varying vec3 vNormal; varying vec3 vView;
       float wave(float x) { return .5 + .5 * sin(x); }
       void main() {
@@ -76,7 +76,7 @@ export class Organism {
         vec3 vessels = rimColor * vesselA + vec3(.9, .17, 2.8) * vesselB + vec3(.12, .9, 1.8) * vesselC;
         float capillary = (vesselA + vesselB + vesselC) * current * uLayer;
         float alpha = tissue * uLayer * .48 + edge * .08 + capillary * .21;
-        color += vessels * current * uLayer * 1.45;
+        color += vessels * current * uLayer * (1.45 + uEnergy*.75 + uTreble*.45);
         gl_FragColor = vec4(color * (1.0 + fresnel * .65 + uEnergy * .3), alpha);
       }`;
     for (let shell = 0; shell < 3; shell++) {
@@ -107,28 +107,29 @@ export class Organism {
 
   private createTendrils(): void {
     const vertex = `
-      uniform float uTime; uniform float uEnergy;
+      uniform float uTime; uniform float uEnergy; uniform float uOnset; uniform float uForce;
       attribute float aAlong; attribute float aPhase; attribute vec3 aColor;
       varying float vAlong; varying float vPhase; varying vec3 vColor;
       void main() {
         vec3 p = position;
         float bend = pow(aAlong, 1.25);
-        p.x += bend * (.19 * sin(aAlong * 5.0 - uTime * .32 + aPhase) + .13 * sin(uTime * .21 + aPhase));
-        p.z += bend * .22 * cos(aAlong * 6.0 - uTime * .28 + aPhase);
+        p.x += bend * (1.+uForce*2.4) * (.19 * sin(aAlong * 5.0 - uTime * .32 + aPhase) + .13 * sin(uTime * .21 + aPhase));
+        p.z += bend * (1.+uForce*2.1) * .22 * cos(aAlong * 6.0 - uTime * .28 + aPhase);
+        p.y += bend*uForce*.24*sin(aAlong*9.-uTime*.5+aPhase);
         p.y += .045 * sin(uTime * .62 + aPhase) * (1.0-aAlong);
-        p.xz *= 1.0 + uEnergy * .025;
+        p.xz *= 1.0 + uEnergy * .04 + uForce*.1*bend + uOnset*.08*bend;
         vAlong = aAlong; vPhase = aPhase; vColor = aColor;
         vec4 mv = modelViewMatrix * vec4(p, 1.0);
         gl_Position = projectionMatrix * mv;
         gl_PointSize = clamp(15.0 / -mv.z, 1.0, 3.0);
       }`;
     const fragment = `
-      uniform float uTime; uniform float uEnergy;
+      uniform float uTime; uniform float uEnergy; uniform float uTreble;
       varying float vAlong; varying float vPhase; varying vec3 vColor;
       void main() {
         float signal = pow(.5 + .5 * sin(vAlong * 24.0 - uTime * .9 + vPhase), 15.0);
         float fade = pow(1.0 - vAlong, .3);
-        gl_FragColor = vec4(vColor * (.65 + signal * .9 + uEnergy * .25), fade * .40);
+        gl_FragColor = vec4(vColor * (.65 + signal * (.9+uTreble*.55) + uEnergy * .55), fade * .40);
       }`;
     const positions: number[] = [], along: number[] = [], phases: number[] = [], colors: number[] = [];
     const dustPos: number[] = [], dustAlong: number[] = [], dustPhase: number[] = [], dustColor: number[] = [];
@@ -203,9 +204,12 @@ export class Organism {
     }
   }
 
-  update(time: number, energy: number): void {
+  update(time: number, energy: number, treble=0, onset=0, force=0): void {
     this.uniforms.uTime.value = time;
     this.uniforms.uEnergy.value = THREE.MathUtils.clamp(energy, 0, 1);
+    this.uniforms.uTreble.value=THREE.MathUtils.clamp(treble,0,1);
+    this.uniforms.uOnset.value=THREE.MathUtils.clamp(onset,0,1);
+    this.uniforms.uForce.value=THREE.MathUtils.clamp(force,0,3);
   }
 
   dispose(): void {

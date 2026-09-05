@@ -1,4 +1,5 @@
 import { VoidpulseApp } from './app/VoidpulseApp';
+import { MusicControls } from './audio/MusicControls';
 import './style.css';
 
 const root=document.querySelector<HTMLElement>('#app');
@@ -10,6 +11,13 @@ const showError=(message:string)=>{
 };
 VoidpulseApp.create(root).then(app=>{
   app.start();
+  const music=new MusicControls(document.querySelector<HTMLElement>('#music-panel')!);
+  app.setSignalSource(music.player);
+  const intensity=document.querySelector<HTMLInputElement>('#music-intensity')!;
+  intensity.addEventListener('input',()=>{
+    app.setIntensity(Number(intensity.value)/100);
+    document.querySelector<HTMLOutputElement>('#intensity-value')!.value=`${intensity.value}%`;
+  });
   const motion=document.querySelector<HTMLButtonElement>('#motion')!;
   const syncMotion=()=>{
     const running=app.isRunning;
@@ -40,7 +48,7 @@ VoidpulseApp.create(root).then(app=>{
     fullscreen.setAttribute('aria-pressed',String(Boolean(document.fullscreenElement)));
   });
   root.addEventListener('visual-error',event=>showError((event as CustomEvent<string>).detail));
-  window.addEventListener('pagehide',event=>{if(!event.persisted)app.dispose();});
+  window.addEventListener('pagehide',event=>{if(!event.persisted){music.dispose();app.dispose();}});
 }).catch(error=>{
   console.error(error);
   showError('this universe needs WebGL 2. enable hardware acceleration, then reload.');

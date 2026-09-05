@@ -1,5 +1,22 @@
 # Third-party notices
 
+## Demo music: Night Owl
+
+“Night Owl” by Broke For Free, from *Directionless EP* (2011).
+
+- Artist: https://brokeforfree.bandcamp.com/track/night-owl
+- Recording: https://commons.wikimedia.org/wiki/File:Broke_For_Free_-_01_-_Night_Owl.ogg
+- Archive license: Creative Commons Attribution 3.0 Unported,
+  https://creativecommons.org/licenses/by/3.0/
+- Original recording SHA-1: `dd9db2b845fa92a5bbde2637891f6c3aaa83be23`.
+- Local asset: `public/audio/night-owl.mp3`.
+
+The archive's reviewed license and the artist's current Creative Commons link
+were checked on 2026-09-05. The downloaded Ogg matched the archive checksum.
+The file was converted to 160 kbps MP3 for browser compatibility. The music is
+unedited. The player repeats the full recording. No endorsement is implied.
+Visible attribution and a license link are provided in `public/music-credits.html`.
+
 ## Aurelia
 
 The jellyfish geometry, materials, procedural motion, Verlet simulation, and

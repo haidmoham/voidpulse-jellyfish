@@ -38,15 +38,19 @@ These are project adaptations. They do not establish new library rules.
 The palette, filament density, and glow can change during visual review.
 The single-organism silhouette and readable negative space must remain.
 
-## Future audio boundary
+## Audio boundary
 
-[`Signal.ts`](../src/core/Signal.ts) separates future signal input from rendering.
+[`Signal.ts`](../src/core/Signal.ts) separates measured audio from rendering.
 `SignalSource` supplies energy, bass, treble, and onset values through `SignalFrame`.
 The interfaces and `Readonly` exist only during TypeScript checking.
 The silent source and normalization function become runtime JavaScript.
 Normalization constrains inputs to finite values between zero and one.
 
-A later Web Audio adapter can implement the source without owning scene geometry.
-The renderer can map those values to membrane motion, filaments, and local flares.
+`MusicPlayer` now implements the source through a Web Audio analyser.
+The renderer maps energy and bass to deformation, treble to filaments, and
+onsets to smooth surges. Intensity can reach 300% for stronger mechanical motion.
+Light stays bounded. Angular phase remains continuous as musical energy changes.
 The silent source preserves a complete visual composition without music.
-This boundary does not request microphone access or provide music playback.
+The demo uses the released “Night Owl” recording with visible attribution.
+Local songs and optional browser-tab audio share the same analysis path.
+The app does not request microphone access or upload captured media.
