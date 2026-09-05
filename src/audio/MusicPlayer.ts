@@ -11,6 +11,7 @@ export class MusicPlayer implements SignalSource {
   private analyser:AnalyserNode|null=null;
   private mediaSource:MediaElementAudioSourceNode|null=null;
   private gain:GainNode|null=null;
+  private analysisSink:GainNode|null=null;
   private stream:MediaStream|null=null;
   private streamSource:MediaStreamAudioSourceNode|null=null;
   private wave=new Uint8Array(2048);
@@ -21,6 +22,8 @@ export class MusicPlayer implements SignalSource {
   private operation=0;
   private volume=.55;
   private disposed=false;
+  private cancelCapture:(()=>void)|null=null;
+  private silentSince:number|null=null;
 
   constructor(readonly audio:HTMLAudioElement,private readonly notify:()=>void){
     audio.src='/audio/night-owl.mp3';audio.preload='none';audio.loop=true;
@@ -41,6 +44,9 @@ export class MusicPlayer implements SignalSource {
     this.analyser=this.context.createAnalyser();
     this.analyser.fftSize=2048;this.analyser.smoothingTimeConstant=.35;
     this.analyser.minDecibels=-90;this.analyser.maxDecibels=-15;
+    // Keep captured audio in the rendered graph without playing it twice.
+    this.analysisSink=this.context.createGain();this.analysisSink.gain.value=0;
+    this.analyser.connect(this.analysisSink);this.analysisSink.connect(this.context.destination);
     this.gain=this.context.createGain();this.gain.gain.value=this.volume;
     this.mediaSource=this.context.createMediaElementSource(this.audio);
     this.mediaSource.connect(this.analyser);
@@ -48,6 +54,7 @@ export class MusicPlayer implements SignalSource {
   }
 
   async toggle():Promise<void>{
+    if(this.cancelCapture){this.cancelCapture();return;}
     if(this.state.kind==='tab'){this.stopTab();return;}
     if(this.state.busy)return;
     if(!this.audio.paused){this.audio.pause();return;}
@@ -91,6 +98,7 @@ export class MusicPlayer implements SignalSource {
   }
 
   private switchSource(kind:MusicKind,title:string):void{
+    this.cancelCapture?.();this.cancelCapture=null;
     ++this.operation;this.audio.pause();this.releaseStream();
     if(this.objectUrl){URL.revokeObjectURL(this.objectUrl);this.objectUrl=null;}
     this.features.reset();this.lastSample=0;
@@ -98,6 +106,7 @@ export class MusicPlayer implements SignalSource {
   }
 
   async shareTab():Promise<void>{
+    if(this.cancelCapture)return;
     if(!navigator.mediaDevices?.getDisplayMedia){
       this.state.message='to use YouTube, open this page in Chrome or Edge on a computer. you can still choose a song here.';
       this.notify();return;
@@ -105,15 +114,27 @@ export class MusicPlayer implements SignalSource {
     const operation=++this.operation;
     this.state.busy=true;this.state.message='choose the tab playing music and turn on “share tab audio”.';this.notify();
     let pending:MediaStream|null=null;
+    let timer:ReturnType<typeof setTimeout>|undefined;
+    let expired=false;
     try{
       this.connect();
       // The browser owns source selection. No captured data leaves this page.
       const capture=navigator.mediaDevices.getDisplayMedia({
-        video:true,audio:true,
+        video:{displaySurface:'browser'},audio:{suppressLocalAudioPlayback:false},
         selfBrowserSurface:'exclude',systemAudio:'exclude',surfaceSwitching:'include',
       } as DisplayMediaStreamOptions);
-      const resume=this.context!.resume();
-      pending=await capture;await resume;
+      const interrupted=new Promise<never>((_,reject)=>{
+        this.cancelCapture=()=>{expired=true;reject(new Error('capture-canceled'));};
+        timer=setTimeout(()=>{expired=true;reject(new Error('capture-timeout'));},30000);
+      });
+      // A host can expose the API without presenting a sharing picker.
+      // Stop streams that arrive after cancellation or the recovery deadline.
+      const guardedCapture=capture.then(stream=>{
+        if(expired||operation!==this.operation||this.disposed){stream.getTracks().forEach(track=>track.stop());throw new Error('capture-canceled');}
+        pending=stream;return stream;
+      });
+      [pending]=await Promise.race([Promise.all([guardedCapture,this.context!.resume()]),interrupted]);
+      if(!pending)throw new Error('no-audio');
       if(operation!==this.operation||this.disposed){pending.getTracks().forEach(track=>track.stop());return;}
       if(!pending.getAudioTracks().length){
         pending.getTracks().forEach(track=>track.stop());pending=null;
@@ -124,15 +145,21 @@ export class MusicPlayer implements SignalSource {
       this.streamSource.connect(this.analyser!);
       // Do not connect capture to speakers: the source tab already plays its sound.
       this.features.reset();
+      this.silentSince=null;
       Object.assign(this.state,{kind:'tab',title:'music from your tab',playing:true,message:''});
       for(const track of this.stream.getTracks())track.addEventListener('ended',this.stopTab,{once:true});
     }catch(error){
       pending?.getTracks().forEach(track=>track.stop());
       if(operation!==this.operation||this.disposed)return;
-      this.state.message=error instanceof DOMException&&error.name==='NotAllowedError'
+      this.state.message=error instanceof Error&&error.message==='capture-timeout'
+        ?'sharing did not open. open this site and your music in the same Chrome or Edge browser, then try again.'
+        :error instanceof Error&&error.message==='capture-canceled'
+        ?'connection canceled. you can play music or try again.'
+        :error instanceof DOMException&&error.name==='NotAllowedError'
         ?'nothing shared. you can try again or play the demo.'
         :'no sound was shared. in Chrome or Edge, choose a browser tab and turn on “share tab audio”.';
     }finally{
+      clearTimeout(timer);if(operation===this.operation)this.cancelCapture=null;
       if(operation===this.operation&&!this.disposed){this.state.busy=false;this.notify();}
     }
   }
@@ -159,14 +186,27 @@ export class MusicPlayer implements SignalSource {
     if(!this.analyser||!this.context||this.context.state!=='running'||!this.state.playing){this.features.reset();return empty;}
     const now=this.context.currentTime,dt=Math.min(.1,Math.max(.001,now-this.lastSample));this.lastSample=now;
     this.analyser.getByteTimeDomainData(this.wave);this.analyser.getByteFrequencyData(this.frequency);
-    return this.features.measure(this.wave,this.frequency,this.context.sampleRate,this.analyser.fftSize,dt,now);
+    const signal=this.features.measure(this.wave,this.frequency,this.context.sampleRate,this.analyser.fftSize,dt,now);
+    if(this.state.kind==='tab'){
+      if(signal.energy>.005){
+        this.silentSince=null;
+        if(this.state.message){this.state.message='';this.notify();}
+      }else{
+        this.silentSince??=now;
+        if(now-this.silentSince>4&&!this.state.message){
+          this.state.message='connected, but no sound is arriving. play the music in the shared tab. if it is playing, reconnect and turn on “share tab audio”.';this.notify();
+        }
+      }
+    }
+    return signal;
   }
 
   dispose():void{
+    this.cancelCapture?.();
     this.disposed=true;++this.operation;this.audio.pause();this.releaseStream();
     this.audio.removeAttribute('src');this.audio.load();
     if(this.objectUrl)URL.revokeObjectURL(this.objectUrl);
-    this.mediaSource?.disconnect();this.analyser?.disconnect();this.gain?.disconnect();
+    this.mediaSource?.disconnect();this.analyser?.disconnect();this.analysisSink?.disconnect();this.gain?.disconnect();
     void this.context?.close();
   }
 }

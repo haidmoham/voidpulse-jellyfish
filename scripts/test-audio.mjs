@@ -19,7 +19,7 @@ frequency.fill(0);wave.fill(128);
 for(let i=0;i<300;i++)result=features.measure(wave,frequency,48000,2048,1/60,3+i/60);
 assert.ok(result.energy<.00001&&result.bass<.00001,'silence returns the visual to rest');
 
-class FakeNode {connect(){} disconnect(){} gain={value:0,setTargetAtTime(){}};}
+class FakeNode {connections=[];connect(node){this.connections.push(node);} disconnect(){this.connections=[];} gain={value:0,setTargetAtTime(){}};}
 class FakeAudio extends EventTarget {
   paused=true;error=null;duration=120;currentTime=0;src='';loop=false;preload='';fail=false;
   async play(){if(this.fail)throw new Error('bad media');this.paused=false;this.dispatchEvent(new Event('playing'));}
@@ -57,7 +57,20 @@ const noAudioRequest=player.shareTab(),noAudio=stream(false);captured(noAudio);a
 assert.ok(noAudio.tracks.every(t=>t.stopped));assert.equal(player.state.kind,'included');assert.ok(player.state.message.includes('no sound'));
 const goodRequest=player.shareTab(),good=stream();captured(good);await goodRequest;
 assert.equal(player.state.kind,'tab');assert.equal(audio.paused,true,'local playback stops when tab capture connects');
+assert.ok(player.streamSource.connections.includes(player.analyser),'capture feeds the analyser');
+assert.ok(player.analyser.connections.includes(player.analysisSink),'analysis remains in the rendered graph');
+assert.equal(player.analysisSink.gain.value,0,'captured audio cannot echo');
+assert.ok(player.analysisSink.connections.includes(player.context.destination));
+player.sample();player.context.currentTime+=5;player.sample();
+assert.ok(player.state.message.includes('no sound is arriving'),'silent capture gives actionable feedback');
+player.analyser.getByteTimeDomainData=a=>{for(let i=0;i<a.length;i++)a[i]=128+Math.round(45*Math.sin(i*.02));};
+player.context.currentTime+=.1;assert.ok(player.sample().energy>0);assert.equal(player.state.message,'','audio clears the silence message');
 good.tracks[0].dispatchEvent(new Event('ended'));
 assert.equal(player.state.kind,'included');assert.ok(good.tracks.every(t=>t.stopped),'browser stop releases all captured tracks');
+const canceledRequest=player.shareTab(),canceledStream=stream();
+await player.toggle();await canceledRequest;
+assert.equal(player.state.busy,false,'pending capture can be canceled');
+captured(canceledStream);await Promise.resolve();await Promise.resolve();
+assert.ok(canceledStream.tracks.every(t=>t.stopped),'capture arriving after cancel is released');
 player.dispose();assert.equal(audio.paused,true);
 console.log('Audio checks passed: measured bands, silence, playback/recovery, source switching, capture races, and track cleanup.');

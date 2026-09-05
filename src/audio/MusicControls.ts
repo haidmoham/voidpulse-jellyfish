@@ -48,8 +48,8 @@ export class MusicControls {
 
   private readonly render=():void=>{
     const state=this.player.state;
-    this.play.disabled=state.busy;
-    this.play.textContent=state.busy?'connecting…':state.kind==='tab'?'disconnect audio':state.playing?'pause music':'play music';
+    this.play.disabled=state.busy&&!state.message;
+    this.play.textContent=state.busy&&state.message?'cancel connection':state.busy?'connecting…':state.kind==='tab'?'disconnect audio':state.playing?'pause music':'play music';
     this.play.setAttribute('aria-pressed',String(state.playing));
     this.play.dataset.playing=String(state.playing);
     this.title.textContent=state.title;
