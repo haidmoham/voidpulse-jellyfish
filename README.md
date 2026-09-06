@@ -28,6 +28,8 @@ acceleration enabled.
 
 ## Controls
 
+- Use `← shin86.dev` in the masthead to return to the cluster. Keep this route visible in the normal interface. Immersive mode retains its existing return control. Use steady jade and bone borders and fills for hover, focus, pressed, and selected states.
+
 - Press **play music** to start the included track, “Come Play with Me” by Kevin MacLeod.
 - Press **pause music** to pause it. Press play to resume from the same position.
 - Use the song-position slider to seek. Use **volume** to change loudness.
