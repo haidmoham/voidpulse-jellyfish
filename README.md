@@ -104,12 +104,11 @@ and source-picker behavior must also be checked in a supported browser.
 ## Deploy
 
 Cloudflare Workers serves `dist/` as static assets. The repository's
-`wrangler.jsonc` assigns both requested custom domains:
+`wrangler.jsonc` assigns only the professional custom domain:
 
 - [jellyfish.mhaider.dev](https://jellyfish.mhaider.dev)
-- [jellyfish.mhaider.dev](https://jellyfish.mhaider.dev)
 
-Use an authenticated Cloudflare account with access to both zones. Build the
+The personal custom domain remains disconnected. Use an authenticated Cloudflare account with access to the professional zone. Build the
 site, check the deployment configuration, then deploy:
 
 ```sh
