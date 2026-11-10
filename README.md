@@ -28,7 +28,7 @@ acceleration enabled.
 
 ## Controls
 
-- Use `← shin86.dev` in the masthead to return to the cluster. Keep this route visible in the normal interface. Immersive mode retains its existing return control. Use steady jade and bone borders and fills for hover, focus, pressed, and selected states.
+- Use `← mhaider.dev` in the masthead to return to the cluster. Keep this route visible in the normal interface. Immersive mode retains its existing return control. Use steady jade and bone borders and fills for hover, focus, pressed, and selected states.
 
 - Press **play music** to start the included track, “Come Play with Me” by Kevin MacLeod.
 - Press **pause music** to pause it. Press play to resume from the same position.
@@ -106,7 +106,7 @@ and source-picker behavior must also be checked in a supported browser.
 Cloudflare Workers serves `dist/` as static assets. The repository's
 `wrangler.jsonc` assigns both requested custom domains:
 
-- [jellyfish.shin86.dev](https://jellyfish.shin86.dev)
+- [jellyfish.mhaider.dev](https://jellyfish.mhaider.dev)
 - [jellyfish.mhaider.dev](https://jellyfish.mhaider.dev)
 
 Use an authenticated Cloudflare account with access to both zones. Build the
@@ -213,3 +213,5 @@ art. The active renderer does not import it. Its copyright headers and MIT
 license remain in [third-party notices](THIRD_PARTY_NOTICES.md).
 See [art direction](docs/art-direction.md) for the original Aurelia and VoXelo
 references, the *Interstellar* rendering paper, and design-vocabulary provenance.
+
+Identity regression check: `node scripts/test-identity.mjs` verifies public attribution links and preserves the professional-only custom-domain restriction.
