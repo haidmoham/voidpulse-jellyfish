@@ -5,7 +5,6 @@
   "workers_dev": false,
   "assets": { "directory": "./dist" },
   "routes": [
-    { "pattern": "jellyfish.shin86.dev", "custom_domain": true },
     { "pattern": "jellyfish.mhaider.dev", "custom_domain": true }
   ]
 }
